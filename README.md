@@ -24,7 +24,7 @@ A minimal Automated Market Maker (AMM) implementation on BNB Chain for the 42 sc
 
 1. Clone the repository:
 ```shell
-git clone https://github.com/yourusername/swap.git
+git clone https://github.com/bobby2fois/tokenZswap.git
 cd swap
 ```
 
