@@ -1,0 +1,10 @@
+Code flow:
+
+Any user deposit any pair of tokens A/B (add_liquidity)
+    -The LP tokens are mint by the contract following sqrt(amountA*amountB) and sent back to the user's wallet
+    -minimum liquidity is mint to 0x0000000000000000000 address to ensure minimum liquidity is always present / prevent division by zero
+
+The contract now keeps in memory that this pair exists and has liquidity, those tokens can be swap.
+    -Use of x*y=k for swaps, ensuring the total k remains constant (minus static fees that is converted into LP (minted) and transferred respectively to all users who possesses LPs)
+
+When user wants to remove liquidity, The contract checks if he possesses LP tokens, and if so, LP tokens are burned and he get back his tokens + fees generated with time

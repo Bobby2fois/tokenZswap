@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TokenSwap AMM</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        .container {
+            margin-bottom: 20px;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        h2 {
+            margin-top: 0;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 15px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px 0;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        input {
+            padding: 8px;
+            margin: 5px 0;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            width: 100%;
+            box-sizing: border-box;
+        }
+        .hidden {
+            display: none;
+        }
+        .error {
+            color: red;
+            margin: 10px 0;
+        }
+        .success {
+            color: green;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <h1>TokenSwap AMM</h1>
+    
+    <div class="container">
+        <h2>Connect Wallet</h2>
+        <button id="connectWallet">Connect to MetaMask</button>
+        <div id="walletInfo" class="hidden">
+            <p>Connected Address: <span id="userAddress"></span></p>
+        </div>
+    </div>
+    
+    <div class="container hidden" id="poolInfoContainer">
+        <h2>Pool Information</h2>
+        <p>Token A: <span id="tokenASymbol">-</span> (<span id="tokenAAddress">-</span>)</p>
+        <p>Token B: <span id="tokenBSymbol">-</span> (<span id="tokenBAddress">-</span>)</p>
+        <p>Reserve A: <span id="reserveA">0</span></p>
+        <p>Reserve B: <span id="reserveB">0</span></p>
+        <p>Your LP Tokens: <span id="lpBalance">0</span></p>
+        <button id="refreshPool">Refresh Pool Data</button>
+    </div>
+    
+    <div class="container hidden" id="swapContainer">
+        <h2>Swap Tokens</h2>
+        <div>
+            <label for="swapDirection">Swap Direction:</label>
+            <select id="swapDirection">
+                <option value="AtoB">A to B</option>
+                <option value="BtoA">B to A</option>
+            </select>
+        </div>
+        <div>
+            <label for="swapAmount">Amount to Swap:</label>
+            <input type="number" id="swapAmount" placeholder="Enter amount">
+        </div>
+        <p>Estimated Output: <span id="estimatedOutput">0</span></p>
+        <button id="approveSwap">1. Approve</button>
+        <button id="executeSwap">2. Swap</button>
+        <p id="swapStatus" class="hidden"></p>
+    </div>
+    
+    <div class="container hidden" id="liquidityContainer">
+        <h2>Manage Liquidity</h2>
+        <div id="addLiquiditySection">
+            <h3>Add Liquidity</h3>
+            <div>
+                <label for="addAmountA">Amount of Token A:</label>
+                <input type="number" id="addAmountA" placeholder="Enter amount">
+            </div>
+            <div>
+                <label for="addAmountB">Amount of Token B:</label>
+                <input type="number" id="addAmountB" placeholder="Enter amount">
+            </div>
+            <button id="approveTokenA">1. Approve Token A</button>
+            <button id="approveTokenB">2. Approve Token B</button>
+            <button id="addLiquidity">3. Add Liquidity</button>
+            <p id="addLiquidityStatus" class="hidden"></p>
+        </div>
+        
+        <div id="removeLiquiditySection">
+            <h3>Remove Liquidity</h3>
+            <div>
+                <label for="removeAmount">LP Tokens to Burn:</label>
+                <input type="number" id="removeAmount" placeholder="Enter amount">
+            </div>
+            <button id="removeLiquidity">Remove Liquidity</button>
+            <p id="removeLiquidityStatus" class="hidden"></p>
+        </div>
+    </div>
+    
+    <script src="https://cdn.jsdelivr.net/npm/web3@1.8.0/dist/web3.min.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
