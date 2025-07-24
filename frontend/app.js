@@ -29,10 +29,26 @@ async function loadAbis() {
 
 // Global variables
 let web3;
-let accounts;
+let accounts = [];
 let tokenSwapContract;
 let tokenAContract;
 let tokenBContract;
+
+// Track token approval status
+let tokenAApproved = false;
+let tokenBApproved = false;
+
+// Function to update Add Liquidity button state
+function updateAddLiquidityButtonState() {
+    const addLiquidityButton = document.getElementById('addLiquidity');
+    if (tokenAApproved && tokenBApproved) {
+        addLiquidityButton.disabled = false;
+        addLiquidityButton.style.opacity = '1';
+    } else {
+        addLiquidityButton.disabled = true;
+        addLiquidityButton.style.opacity = '0.5';
+    }
+}
 let tokenADecimals = 18;
 let tokenBDecimals = 18;
 
@@ -84,14 +100,6 @@ async function connectWallet() {
 // Update pool information
 async function updatePoolInfo() {
     try {
-        // Get token symbols
-        // const tokenASymbol = await tokenAContract.methods.symbol().call();
-        // const tokenBSymbol = await tokenBContract.methods.symbol().call();
-        // document.getElementById('tokenASymbol').textContent = tokenASymbol;
-        // document.getElementById('tokenBSymbol').textContent = tokenBSymbol;
-        // document.getElementById('tokenAAddress').textContent = TOKEN_A_ADDRESS;
-        // document.getElementById('tokenBAddress').textContent = TOKEN_B_ADDRESS;
-        
         // Get reserves
         const reserves = await tokenSwapContract.methods.getReserves().call();
         const reserveA = web3.utils.fromWei(reserves[0], 'ether');
@@ -99,10 +107,19 @@ async function updatePoolInfo() {
         document.getElementById('reserveA').textContent = parseFloat(reserveA).toFixed(6);
         document.getElementById('reserveB').textContent = parseFloat(reserveB).toFixed(6);
         
-        // Get LP balance
+        // Get user balances
         if (accounts && accounts.length > 0) {
+            // Get LP token balance
             const lpBalance = await tokenSwapContract.methods.balanceOf(accounts[0]).call();
             document.getElementById('lpBalance').textContent = parseFloat(web3.utils.fromWei(lpBalance, 'ether')).toFixed(6);
+            
+            // Get token A balance
+            const tokenABalance = await tokenAContract.methods.balanceOf(accounts[0]).call();
+            document.getElementById('tokenABalance').textContent = parseFloat(web3.utils.fromWei(tokenABalance, 'ether')).toFixed(6);
+            
+            // Get token B balance
+            const tokenBBalance = await tokenBContract.methods.balanceOf(accounts[0]).call();
+            document.getElementById('tokenBBalance').textContent = parseFloat(web3.utils.fromWei(tokenBBalance, 'ether')).toFixed(6);
         }
     } catch (error) {
         console.error("Error updating pool info:", error);
@@ -219,6 +236,10 @@ async function approveTokenA() {
         
         await tokenAContract.methods.approve(TOKEN_SWAP_ADDRESS, amountAWei).send({ from: accounts[0] });
         
+        // Set token A as approved and update button state
+        tokenAApproved = true;
+        updateAddLiquidityButtonState();
+        
         document.getElementById('addLiquidityStatus').textContent = 'Token A approved! Now approve Token B.';
         document.getElementById('addLiquidityStatus').classList.add('success');
     } catch (error) {
@@ -245,6 +266,10 @@ async function approveTokenB() {
         document.getElementById('addLiquidityStatus').classList.remove('error', 'success');
         
         await tokenBContract.methods.approve(TOKEN_SWAP_ADDRESS, amountBWei).send({ from: accounts[0] });
+        
+        // Set token B as approved and update button state
+        tokenBApproved = true;
+        updateAddLiquidityButtonState();
         
         document.getElementById('addLiquidityStatus').textContent = 'Token B approved! You can now add liquidity.';
         document.getElementById('addLiquidityStatus').classList.add('success');
@@ -273,12 +298,17 @@ async function addLiquidity() {
         document.getElementById('addLiquidityStatus').classList.remove('hidden');
         document.getElementById('addLiquidityStatus').classList.remove('error', 'success');
         
-        const tx = await tokenSwapContract.methods.addLiquidity(amountAWei, amountBWei).send({ from: accounts[0] });
+        await tokenSwapContract.methods.addLiquidity(amountAWei, amountBWei).send({ from: accounts[0] });
         
-        document.getElementById('addLiquidityStatus').textContent = 'Liquidity added successfully! Transaction hash: ' + tx.transactionHash;
+        document.getElementById('addLiquidityStatus').textContent = 'Liquidity added successfully!';
         document.getElementById('addLiquidityStatus').classList.add('success');
         
-        // Update pool info after adding liquidity
+        // Reset approval status after successful liquidity addition
+        tokenAApproved = false;
+        tokenBApproved = false;
+        updateAddLiquidityButtonState();
+        
+        // Update pool info
         updatePoolInfo();
     } catch (error) {
         console.error("Error adding liquidity:", error);
@@ -337,6 +367,19 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('approveTokenA').addEventListener('click', approveTokenA);
     document.getElementById('approveTokenB').addEventListener('click', approveTokenB);
     document.getElementById('addLiquidity').addEventListener('click', addLiquidity);
+    
+    // Reset approval status when input amounts change
+    document.getElementById('addAmountA').addEventListener('input', () => {
+        tokenAApproved = false;
+        updateAddLiquidityButtonState();
+    });
+    document.getElementById('addAmountB').addEventListener('input', () => {
+        tokenBApproved = false;
+        updateAddLiquidityButtonState();
+    });
+    
+    // Initialize the Add Liquidity button as disabled
+    updateAddLiquidityButtonState();
     document.getElementById('removeLiquidity').addEventListener('click', removeLiquidity);
     
     // Listen for account changes
