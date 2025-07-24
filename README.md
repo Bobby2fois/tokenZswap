@@ -9,10 +9,9 @@ A minimal Automated Market Maker (AMM) implementation on BNB Chain for the 42 sc
 - Swap tokens using the constant product formula with a 0.3% fee
 - Simple and clean frontend interface
 
-## Smart Contracts
+## Smart Contract
 
 - **TokenSwap.sol**: The main AMM contract implementing the constant product formula
-- **TestToken.sol**: A simple ERC20 token for testing purposes
 
 ## Getting Started
 
