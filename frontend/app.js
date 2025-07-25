@@ -37,6 +37,7 @@ let tokenBContract;
 // Track token approval status
 let tokenAApproved = false;
 let tokenBApproved = false;
+let swapApproved = false;
 
 // Function to update Add Liquidity button state
 function updateAddLiquidityButtonState() {
@@ -47,6 +48,18 @@ function updateAddLiquidityButtonState() {
     } else {
         addLiquidityButton.disabled = true;
         addLiquidityButton.style.opacity = '0.5';
+    }
+}
+
+// Function to update Swap button state
+function updateSwapButtonState() {
+    const executeSwapButton = document.getElementById('executeSwap');
+    if (swapApproved) {
+        executeSwapButton.disabled = false;
+        executeSwapButton.style.opacity = '1';
+    } else {
+        executeSwapButton.disabled = true;
+        executeSwapButton.style.opacity = '0.5';
     }
 }
 let tokenADecimals = 18;
@@ -170,8 +183,13 @@ async function approveSwap() {
         
         document.getElementById('swapStatus').textContent = 'Approving...';
         document.getElementById('swapStatus').classList.remove('hidden');
+        document.getElementById('swapStatus').classList.remove('error', 'success');
         
         await tokenContract.methods.approve(TOKEN_SWAP_ADDRESS, amountIn).send({ from: accounts[0] });
+        
+        // Set swap as approved and update button state
+        swapApproved = true;
+        updateSwapButtonState();
         
         document.getElementById('swapStatus').textContent = 'Approved! You can now execute the swap.';
         document.getElementById('swapStatus').classList.add('success');
@@ -199,15 +217,18 @@ async function executeSwap() {
         document.getElementById('swapStatus').classList.remove('hidden');
         document.getElementById('swapStatus').classList.remove('error', 'success');
         
-        let tx;
         if (swapDirection === 'AtoB') {
-            tx = await tokenSwapContract.methods.swapAForB(amountIn).send({ from: accounts[0] });
+            await tokenSwapContract.methods.swapAForB(amountIn).send({ from: accounts[0] });
         } else {
-            tx = await tokenSwapContract.methods.swapBForA(amountIn).send({ from: accounts[0] });
+            await tokenSwapContract.methods.swapBForA(amountIn).send({ from: accounts[0] });
         }
         
-        document.getElementById('swapStatus').textContent = 'Swap successful! Transaction hash: ' + tx.transactionHash;
+        document.getElementById('swapStatus').textContent = 'Swap executed successfully!';
         document.getElementById('swapStatus').classList.add('success');
+        
+        // Reset approval status after successful swap
+        swapApproved = false;
+        updateSwapButtonState();
         
         // Update pool info after swap
         updatePoolInfo();
@@ -358,8 +379,18 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('refreshPool').addEventListener('click', updatePoolInfo);
     
     // Swap
-    document.getElementById('swapDirection').addEventListener('change', calculateEstimatedOutput);
-    document.getElementById('swapAmount').addEventListener('input', calculateEstimatedOutput);
+    document.getElementById('swapDirection').addEventListener('change', () => {
+        calculateEstimatedOutput();
+        // Reset swap approval when direction changes
+        swapApproved = false;
+        updateSwapButtonState();
+    });
+    document.getElementById('swapAmount').addEventListener('input', () => {
+        calculateEstimatedOutput();
+        // Reset swap approval when amount changes
+        swapApproved = false;
+        updateSwapButtonState();
+    });
     document.getElementById('approveSwap').addEventListener('click', approveSwap);
     document.getElementById('executeSwap').addEventListener('click', executeSwap);
     
@@ -378,8 +409,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         updateAddLiquidityButtonState();
     });
     
-    // Initialize the Add Liquidity button as disabled
+    // Initialize buttons as disabled
     updateAddLiquidityButtonState();
+    updateSwapButtonState();
     document.getElementById('removeLiquidity').addEventListener('click', removeLiquidity);
     
     // Listen for account changes
