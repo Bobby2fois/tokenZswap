@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NFT Marketplace - TokenSwap</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        .container {
+            margin-bottom: 20px;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        h2 {
+            margin-top: 0;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 15px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px 0;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        button:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+            opacity: 0.5;
+        }
+        input {
+            padding: 8px;
+            margin: 5px 0;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            width: 100%;
+            box-sizing: border-box;
+        }
+        .hidden {
+            display: none;
+        }
+        .error {
+            color: red;
+            margin: 10px 0;
+        }
+        .warning {
+            color: #ff9900;
+            margin: 10px 0;
+        }
+        .success {
+            color: green;
+            margin: 10px 0;
+        }
+        .nav-buttons {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 20px;
+        }
+        .nft-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 20px;
+        }
+        .nft-card {
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            padding: 10px;
+            background-color: #f9f9f9;
+        }
+        .nft-image {
+            width: 100%;
+            height: auto;
+            border-radius: 5px;
+            margin-bottom: 10px;
+        }
+        .nft-info {
+            margin-bottom: 10px;
+        }
+        .nft-actions {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+        .tab-buttons {
+            display: flex;
+            margin-bottom: 20px;
+        }
+        .tab-button {
+            padding: 10px 20px;
+            background-color: #f1f1f1;
+            border: none;
+            cursor: pointer;
+            margin-right: 5px;
+        }
+        .tab-button.active {
+            background-color: #4CAF50;
+            color: white;
+        }
+        .tab-content {
+            display: none;
+        }
+        .tab-content.active {
+            display: block;
+        }
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+        .modal-content {
+            background-color: white;
+            padding: 20px;
+            border-radius: 5px;
+            max-width: 500px;
+            width: 90%;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+        }
+        .form-actions {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 20px;
+        }
+        .loading {
+            text-align: center;
+            color: #666;
+            padding: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="nav-buttons">
+        <h1>NFT Marketplace</h1>
+        <button id="goToAMM" onclick="window.location.href='index.html'">Go to AMM</button>
+    </div>
+
+    <div id="walletInfo" class="container hidden">
+        <h3>Connected Wallet</h3>
+        <p>Address: <span id="userAddress"></span></p>
+    </div>
+
+    <div class="container">
+        <button id="connectButton">Connect Wallet</button>
+        <p id="walletStatus" class="hidden"></p>
+    </div>
+
+    <div class="tab-buttons">
+        <button class="tab-button active" onclick="openTab('browseTab')">Browse NFTs</button>
+        <button class="tab-button" onclick="openTab('myNFTsTab')">My NFTs</button>
+        <button class="tab-button" onclick="openTab('myListingsTab')">My Listings</button>
+    </div>
+
+    <!-- Browse NFTs Tab -->
+    <div id="browseTab" class="tab-content active">
+        <div class="container">
+            <h2>Browse NFTs for Sale</h2>
+            <div id="nftListings" class="nft-grid">
+                <!-- NFT listings will be displayed here -->
+                <div class="loading">Loading NFTs...</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- My NFTs Tab -->
+    <div id="myNFTsTab" class="tab-content">
+        <div class="container">
+            <h2>My NFTs</h2>
+            <div id="myNFTs" class="nft-grid">
+                <!-- User's NFTs will be displayed here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- My Listings Tab -->
+    <div id="myListingsTab" class="tab-content">
+        <div class="container">
+            <h2>My Active Listings</h2>
+            <div id="myActiveListings" class="nft-grid">
+                <!-- User's active listings will be displayed here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- NFT Listing Form -->
+    <div id="listNFTModal" class="modal hidden" style="display: none;">
+        <div class="modal-content">
+            <h2>List NFT for Sale</h2>
+            <form id="listNFTForm">
+                <input type="hidden" id="listingNFTContract">
+                <input type="hidden" id="listingTokenId">
+                
+                <div class="form-group">
+                    <label for="priceTokenA">Price in Token A:</label>
+                    <input type="number" id="priceTokenA" step="0.000001" min="0" placeholder="Price in Token A">
+                </div>
+                
+                <div class="form-group">
+                    <label for="priceTokenB">Price in Token B:</label>
+                    <input type="number" id="priceTokenB" step="0.000001" min="0" placeholder="Price in Token B">
+                </div>
+                
+                <p id="listingStatus" class="hidden"></p>
+                
+                <div class="form-actions">
+                    <button type="button" id="cancelListingBtn">Cancel</button>
+                    <button type="button" id="confirmListingBtn">List NFT</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- NFT Detail Modal -->
+    <div id="nftDetailModal" class="modal hidden" style="display: none;">
+        <div class="modal-content">
+            <h2>NFT Details</h2>
+            <div id="nftDetailContent"></div>
+            <button id="closeDetailBtn">Close</button>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/web3@1.5.2/dist/web3.min.js"></script>
+    <script src="marketplace.js"></script>
+</body>
+</html>

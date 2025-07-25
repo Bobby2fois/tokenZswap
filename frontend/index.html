@@ -5,6 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>TokenSwap AMM</title>
     <style>
+        .nav-buttons {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 20px;
+        }
         body {
             font-family: Arial, sans-serif;
             max-width: 800px;
@@ -59,7 +64,10 @@
     </style>
 </head>
 <body>
-    <h1>TokenSwap AMM</h1>
+    <div class="nav-buttons">
+        <h1>TokenSwap AMM</h1>
+        <button id="goToMarketplace" onclick="window.location.href='marketplace.html'">Go to Marketplace</button>
+    </div>
     
     <div class="container">
         <h2>Connect Wallet</h2>
