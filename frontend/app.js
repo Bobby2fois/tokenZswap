@@ -196,11 +196,36 @@ async function connectWallet() {
     if (window.ethereum) {
         try {
             web3 = new Web3(window.ethereum);
-            accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+            
+            // Check if we already have permission
+            let requestedAccounts;
+            try {
+                // First try getting accounts to see if already connected
+                requestedAccounts = await web3.eth.getAccounts();
+                if (requestedAccounts.length === 0) {
+                    // If no accounts, request permission
+                    requestedAccounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+                }
+            } catch (e) {
+                // If error, explicitly request permission
+                requestedAccounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+            }
+            
+            accounts = requestedAccounts;
             
             if (accounts.length > 0) {
+                // Save connection state to localStorage
+                localStorage.setItem('walletConnected', 'true');
+                localStorage.setItem('lastConnectedAccount', accounts[0]);
+                
+                // Update UI to show connected state
                 userAddressSpan.textContent = accounts[0];
                 walletInfo.classList.remove('hidden');
+                
+                // Update connect button to show connected state
+                connectWalletBtn.textContent = `Connected: ${accounts[0].substring(0, 6)}...${accounts[0].substring(38)}`;
+                connectWalletBtn.disabled = true;
+                connectWalletBtn.classList.add('disabled');
                 
                 // Initialize contracts
                 tokenSwapContract = new web3.eth.Contract(TOKEN_SWAP_ABI, TOKEN_SWAP_ADDRESS);
@@ -567,12 +592,67 @@ async function removeLiquidity() {
     }
 }
 
+// Setup wallet event listeners
+function setupWalletEventListeners() {
+    if (window.ethereum) {
+        // Handle account changes
+        window.ethereum.on('accountsChanged', async (newAccounts) => {
+            console.log('Account changed:', newAccounts);
+            if (newAccounts.length === 0) {
+                // User disconnected their wallet
+                localStorage.removeItem('walletConnected');
+                localStorage.removeItem('lastConnectedAccount');
+                // Reload the page to reset the UI
+                window.location.reload();
+            } else {
+                // Update the account and UI
+                accounts = newAccounts;
+                userAddressSpan.textContent = accounts[0];
+                localStorage.setItem('lastConnectedAccount', accounts[0]);
+                
+                // Update connect button
+                connectWalletBtn.textContent = `Connected: ${accounts[0].substring(0, 6)}...${accounts[0].substring(38)}`;
+                connectWalletBtn.disabled = true;
+                connectWalletBtn.classList.add('disabled');
+                
+                // Reload data with new account
+                updatePoolInfo();
+            }
+        });
+        
+        // Handle chain changes
+        window.ethereum.on('chainChanged', (chainId) => {
+            console.log('Network changed:', chainId);
+            // Reload the page when the chain changes
+            window.location.reload();
+        });
+        
+        // Handle disconnect
+        window.ethereum.on('disconnect', (error) => {
+            console.log('Wallet disconnected:', error);
+            localStorage.removeItem('walletConnected');
+            localStorage.removeItem('lastConnectedAccount');
+            window.location.reload();
+        });
+    }
+}
+
 // Event listeners
 document.addEventListener('DOMContentLoaded', async () => {
     // Load ABIs first
     await loadAbis();
-    // Connect wallet
+    
+    // Check if wallet was previously connected
+    if (localStorage.getItem('walletConnected') === 'true') {
+        console.log('Wallet was previously connected, attempting to reconnect...');
+        await connectWallet();
+    }
+    
+    // Connect wallet button event
     connectWalletBtn.addEventListener('click', connectWallet);
+    
+    // Setup wallet events
+    setupWalletEventListeners();
     
     // Refresh pool data
     document.getElementById('refreshPool').addEventListener('click', updatePoolInfo);

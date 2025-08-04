@@ -46,6 +46,19 @@ const NFT_MARKETPLACE_ABI = [
             {"internalType": "uint256", "name": "priceTokenB", "type": "uint256"}
         ],
         "name": "listNFT", "outputs": [], "stateMutability": "nonpayable", "type": "function"
+    },
+    {
+        "inputs": [{"internalType": "uint256", "name": "", "type": "uint256"}],
+        "name": "listings",
+        "outputs": [
+            {"internalType": "address", "name": "seller", "type": "address"},
+            {"internalType": "address", "name": "nftContract", "type": "address"},
+            {"internalType": "uint256", "name": "tokenId", "type": "uint256"},
+            {"internalType": "uint256", "name": "priceTokenA", "type": "uint256"},
+            {"internalType": "uint256", "name": "priceTokenB", "type": "uint256"},
+            {"internalType": "bool", "name": "active", "type": "bool"}
+        ],
+        "stateMutability": "view", "type": "function"
     }
 ];
 
@@ -74,8 +87,14 @@ let tokenAContract;
 let tokenBContract;
 
 // Initialize when DOM loads
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', async function() {
     document.getElementById('connectButton').addEventListener('click', connectWallet);
+    
+    // Check if wallet was previously connected
+    if (localStorage.getItem('walletConnected') === 'true') {
+        console.log('Wallet was previously connected, attempting to reconnect...');
+        await connectWallet();
+    }
     
     // Initialize modal close buttons
     document.getElementById('closeDetailBtn').addEventListener('click', function() {
@@ -159,8 +178,21 @@ async function initWeb3() {
         });
         
         try {
-            // Request account access
-            accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+            // Check if we already have permission
+            let requestedAccounts;
+            try {
+                // First try getting accounts to see if already connected
+                requestedAccounts = await web3.eth.getAccounts();
+                if (requestedAccounts.length === 0) {
+                    // If no accounts, request permission
+                    requestedAccounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+                }
+            } catch (e) {
+                // If error, explicitly request permission
+                requestedAccounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+            }
+            
+            accounts = requestedAccounts;
             
             // Check if we're on BNB Testnet
             const chainId = await web3.eth.getChainId();
@@ -182,6 +214,50 @@ async function initWeb3() {
     } else {
         alert('Please install MetaMask to use this dApp!');
         return false;
+    }
+}
+
+// Setup wallet event listeners
+function setupWalletEventListeners() {
+    if (window.ethereum) {
+        // Handle account changes
+        window.ethereum.on('accountsChanged', async (newAccounts) => {
+            console.log('Account changed:', newAccounts);
+            if (newAccounts.length === 0) {
+                // User disconnected their wallet
+                localStorage.removeItem('walletConnected');
+                localStorage.removeItem('lastConnectedAccount');
+                // Reload the page to reset the UI
+                window.location.reload();
+            } else {
+                // Update the account and UI
+                accounts = newAccounts;
+                document.getElementById('connectButton').textContent = `Connected: ${accounts[0].substring(0, 6)}...${accounts[0].substring(38)}`;
+                document.getElementById('userAddress').textContent = accounts[0];
+                localStorage.setItem('lastConnectedAccount', accounts[0]);
+                
+                // Reload data with new account
+                await initializeContracts();
+                loadMarketplaceListings();
+                loadMyNFTs();
+                loadMyListings();
+            }
+        });
+        
+        // Handle chain changes
+        window.ethereum.on('chainChanged', (chainId) => {
+            console.log('Network changed:', chainId);
+            // Reload the page when the chain changes
+            window.location.reload();
+        });
+        
+        // Handle disconnect
+        window.ethereum.on('disconnect', (error) => {
+            console.log('Wallet disconnected:', error);
+            localStorage.removeItem('walletConnected');
+            localStorage.removeItem('lastConnectedAccount');
+            window.location.reload();
+        });
     }
 }
 
@@ -224,6 +300,10 @@ async function connectWallet() {
             document.getElementById('userAddress').textContent = accounts[0];
             document.getElementById('walletInfo').classList.remove('hidden');
             
+            // Save connection state to localStorage
+            localStorage.setItem('walletConnected', 'true');
+            localStorage.setItem('lastConnectedAccount', accounts[0]);
+            
             await initializeContracts();
             loadMarketplaceListings();
         } else {
@@ -236,6 +316,9 @@ async function connectWallet() {
         document.getElementById('walletStatus').classList.add('error');
     }
 }
+
+// Setup wallet events after initialization
+setupWalletEventListeners();
 
 // Initialize contracts
 async function initializeContracts() {
@@ -328,7 +411,8 @@ async function buyNFTWithToken(listingId, tokenType) {
             return;
         }
         
-        // First get the listing details to know the exact price
+        // First get the listing details to know the exact price - access the mapping as a method
+        // When accessing a public mapping in Web3.js, we call it as a function with the key as parameter
         const listing = await marketplaceContract.methods.listings(listingId).call();
         
         // Get the price based on which token the user wants to use
