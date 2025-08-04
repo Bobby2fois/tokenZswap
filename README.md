@@ -108,6 +108,36 @@ When removing liquidity:
 - LP tokens are burned
 - Tokens are returned proportionally to the share of the pool
 
+## NFT Marketplace
+
+The project includes an NFT marketplace that allows users to:
+- List NFTs for sale with prices in Token A and/or Token B
+- Buy NFTs using either token from the AMM
+- Cancel listings (seller only)
+- Display NFTs with metadata
+
+### Testing with SimpleNFT
+
+To make testing easier, a SimpleNFT contract is included that generates NFTs with random properties and external image URLs.
+
+1. Deploy the SimpleNFT contract:
+```shell
+npx hardhat run scripts/deploy-simple-nft.js --network bscTestnet
+```
+
+2. Add the deployed SimpleNFT address to your `.env` file:
+```
+SIMPLE_NFT_ADDRESS=your_deployed_simple_nft_address
+```
+
+3. Mint test NFTs to your wallet:
+```shell
+npx hardhat run scripts/mint-test-nfts.js --network bscTestnet 5
+```
+The number at the end (5) is how many NFTs to mint. You can change this to mint more or fewer NFTs.
+
+4. Use these NFTs in the marketplace to test listing, buying, and canceling.
+
 ## License
 
 This project is licensed under the MIT License.

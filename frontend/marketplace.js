@@ -1,10 +1,11 @@
 // NFT Marketplace JavaScript
 
 // Contract addresses - update these with your deployed contract addresses
-const NFT_MARKETPLACE_ADDRESS = "0xf13881786df751e2293df3794F543b22B549879A";
-const NFT_CONTRACT_ADDRESS = "0x97225257b00fa2AD7387A769Da879A0ff399dA01";
+const NFT_MARKETPLACE_ADDRESS = "0x582b6DDF45E8b54ada9997A5fC782D419D179106";
 const TOKEN_A_ADDRESS = "0x186856b5B97Caf654dc51aE46c33757304b5BdFE";
 const TOKEN_B_ADDRESS = "0x14974761C8e06ACf6906bf7efC90B608EbFfb058";
+const NFT_ADDRESS = "0xd54a74a76e734eb036e94E6Fe71061b9F2F3fc9E";
+
 
 // ABIs
 const NFT_MARKETPLACE_ABI = [
@@ -138,9 +139,10 @@ const BNB_TESTNET = {
         symbol: 'BNB',
         decimals: 18
     },
-    rpcUrls: ['https://data-seed-prebsc-1-s1.binance.org:8545/'],
+    rpcUrls: ['wss://bsc-testnet-rpc.publicnode.com'],
     blockExplorerUrls: ['https://testnet.bscscan.com']
 };
+
 
 // Initialize Web3 with improved configuration
 async function initWeb3() {
@@ -238,7 +240,7 @@ async function connectWallet() {
 // Initialize contracts
 async function initializeContracts() {
     marketplaceContract = new web3.eth.Contract(NFT_MARKETPLACE_ABI, NFT_MARKETPLACE_ADDRESS);
-    nftContract = new web3.eth.Contract(ERC721_ABI, NFT_CONTRACT_ADDRESS);
+    nftContract = new web3.eth.Contract(ERC721_ABI, NFT_ADDRESS); // Use SimpleNFT as the main NFT contract
     tokenAContract = new web3.eth.Contract(ERC20_ABI, TOKEN_A_ADDRESS);
     tokenBContract = new web3.eth.Contract(ERC20_ABI, TOKEN_B_ADDRESS);
 }
@@ -284,14 +286,13 @@ async function loadMarketplaceListings() {
 async function displayNFTInCard(cardElement, nftContractAddress, tokenId, listingInfo) {
     try {
         const tokenURI = await nftContract.methods.tokenURI(tokenId).call();
-        
-        const base64Data = tokenURI.split(',')[1];
-        const jsonString = atob(base64Data);
+        const jsonString = tokenURI.substring('data:application/json;utf8,'.length);;
         const metadata = JSON.parse(jsonString);
+        imageUrl=metadata.image;
         
         cardElement.innerHTML = `
             <div class="nft-image-container">
-                <img src="${metadata.image}" alt="${metadata.name}" class="nft-image">
+                <img src="${imageUrl}" alt="${metadata.name}" class="nft-image">
             </div>
             <div class="nft-info">
                 <h3>${metadata.name}</h3>
@@ -327,37 +328,41 @@ async function buyNFTWithToken(listingId, tokenType) {
             return;
         }
         
+        // First get the listing details to know the exact price
         const listing = await marketplaceContract.methods.listings(listingId).call();
         
-        if (!listing.active) {
-            alert('This listing is no longer active');
-            loadMarketplaceListings();
+        // Get the price based on which token the user wants to use
+        const price = tokenType === 'A' ? listing.priceTokenA : listing.priceTokenB;
+        
+        // Check if the price is valid
+        if (price === '0') {
+            alert(`This NFT is not for sale with Token ${tokenType}`);
             return;
         }
         
-        const price = tokenType === 'A' ? listing.priceTokenA : listing.priceTokenB;
+        // Get the token contract based on which token the user wants to use
         const tokenContract = tokenType === 'A' ? tokenAContract : tokenBContract;
         
+        // Check if user has enough balance
         const balance = await tokenContract.methods.balanceOf(accounts[0]).call();
         if (web3.utils.toBN(balance).lt(web3.utils.toBN(price))) {
             alert(`Insufficient Token ${tokenType} balance. You need ${web3.utils.fromWei(price, 'ether')} tokens.`);
             return;
         }
         
-        const allowance = await tokenContract.methods.allowance(accounts[0], NFT_MARKETPLACE_ADDRESS).call();
-        if (web3.utils.toBN(allowance).lt(web3.utils.toBN(price))) {
-            await tokenContract.methods.approve(NFT_MARKETPLACE_ADDRESS, price).send({ from: accounts[0] });
-        }
+        // Approve the marketplace to spend the exact amount of tokens needed
+        await tokenContract.methods.approve(NFT_MARKETPLACE_ADDRESS, price).send({ from: accounts[0] });
         
+        // Execute the purchase based on which token is being used
         if (tokenType === 'A') {
             await marketplaceContract.methods.buyNFTWithTokenA(listingId).send({ from: accounts[0] });
         } else {
             await marketplaceContract.methods.buyNFTWithTokenB(listingId).send({ from: accounts[0] });
         }
         
-        alert('NFT purchased successfully!');
-        loadMarketplaceListings();
-        
+        alert(`NFT purchased successfully with Token ${tokenType}!`);
+        loadMarketplaceListings(); // Refresh the listings
+        loadMyNFTs(); // Refresh user's NFTs
     } catch (error) {
         console.error("Error buying NFT:", error);
         alert(`Error buying NFT: ${error.message}`);
@@ -384,230 +389,92 @@ async function cancelNFTListing(listingId) {
 
 // Load user's NFTs
 async function loadMyNFTs() {
+    if (!web3 || !accounts || accounts.length === 0) {
+        console.log("Wallet not connected");
+        return;
+    }
+    
+    const myNFTsContainer = document.getElementById('myNFTs');
+    myNFTsContainer.innerHTML = '<div class="loading">Loading your NFTs...</div>';
+    
     try {
-        if (!accounts || accounts.length === 0) {
-            document.getElementById('myNFTs').innerHTML = '<p>Please connect your wallet to view your NFTs.</p>';
+        // Get the user's NFT balance from SimpleNFT contract
+        const balance = await nftContract.methods.balanceOf(accounts[0]).call();
+        
+        if (balance == 0) {
+            myNFTsContainer.innerHTML = `
+                <p>You don't own any NFTs.</p>
+            `;
             return;
         }
         
-        const myNFTsContainer = document.getElementById('myNFTs');
-        myNFTsContainer.innerHTML = '<div class="loading">Loading your NFTs...</div>';
+        myNFTsContainer.innerHTML = '';
         
-        // Check if the contract supports ERC721Enumerable
-        let supportsEnumerable = false;
-        try {
-            // Try to call supportsInterface for ERC721Enumerable (0x780e9d63)
-            supportsEnumerable = await nftContract.methods.supportsInterface('0x780e9d63').call();
-        } catch (err) {
-            console.log("Contract doesn't support supportsInterface check, assuming non-enumerable");
-        }
-        
-        if (supportsEnumerable) {
-            // ERC721Enumerable approach
-            const balance = await nftContract.methods.balanceOf(accounts[0]).call();
-            
-            if (balance == 0) {
-                myNFTsContainer.innerHTML = '<p>You don\'t own any NFTs from this collection.</p>';
-                return;
+        // Display all NFTs the user owns
+        for (let i = 0; i < balance; i++) {
+            try {
+                const tokenId = await nftContract.methods.tokenOfOwnerByIndex(accounts[0], i).call();
+                
+                const card = document.createElement('div');
+                card.className = 'nft-card';
+                card.innerHTML = `<div class="loading">Loading NFT #${tokenId}...</div>`;
+                myNFTsContainer.appendChild(card);
+                
+                await displayMyNFTInCard(card, tokenId);
+            } catch (err) {
+                console.error(`Error loading NFT at index ${i}:`, err);
             }
-            
-            myNFTsContainer.innerHTML = '';
-            
-            for (let i = 0; i < balance; i++) {
-                try {
-                    const tokenId = await nftContract.methods.tokenOfOwnerByIndex(accounts[0], i).call();
-                    
-                    const card = document.createElement('div');
-                    card.className = 'nft-card';
-                    card.innerHTML = `<div class="loading">Loading NFT #${tokenId}...</div>`;
-                    myNFTsContainer.appendChild(card);
-                    
-                    await displayMyNFTInCard(card, tokenId);
-                } catch (err) {
-                    console.error(`Error loading NFT at index ${i}:`, err);
-                }
-            }
-        } else {
-            // Alternative approach for non-enumerable NFTs
-            // We'll need to ask the user to input their NFT IDs
-            myNFTsContainer.innerHTML = `
-                <div class="non-enumerable-notice">
-                    <p>Your NFT contract doesn't support automatic NFT discovery.</p>
-                    <p>Please enter the ID of your NFT to view and list it:</p>
-                    <div class="nft-input-form">
-                        <input type="number" id="manualNftId" placeholder="Enter NFT ID" min="0">
-                        <button id="loadManualNftBtn">Load NFT</button>
-                    </div>
-                    <div id="manualNftDisplay"></div>
-                </div>
-            `;
-            
-            // Add event listener for the manual NFT loading
-            document.getElementById('loadManualNftBtn').addEventListener('click', async function() {
-                const tokenId = document.getElementById('manualNftId').value;
-                if (!tokenId) return;
-                
-                const displayDiv = document.getElementById('manualNftDisplay');
-                displayDiv.innerHTML = `<div class="loading">Loading NFT #${tokenId}...</div>`;
-                
-                try {
-                    console.log(`Checking ownership of NFT #${tokenId}...`);
-                    
-                    // Check if the user owns this NFT using a direct ownerOf call
-                    // This is more reliable than tokenURI which might have state access issues
-                    let owner;
-                    try {
-                        owner = await nftContract.methods.ownerOf(tokenId).call();
-                        console.log(`Owner of NFT #${tokenId}:`, owner);
-                        console.log(`Current account:`, accounts[0]);
-                    } catch (ownerError) {
-                        // If ownerOf fails, the token likely doesn't exist
-                        console.error(`Error checking ownership of token #${tokenId}:`, ownerError);
-                        
-                        if (ownerError.message.includes("nonexistent token") || 
-                            ownerError.message.includes("Token doesn't exist") ||
-                            ownerError.message.includes("owner query for nonexistent")) {
-                            displayDiv.innerHTML = `<div class="error">Token #${tokenId} does not exist</div>`;
-                        } else {
-                            displayDiv.innerHTML = `<div class="error">Error checking token #${tokenId}: ${ownerError.message}</div>`;
-                        }
-                        return;
-                    }
-                    
-                    // Verify ownership
-                    if (owner.toLowerCase() !== accounts[0].toLowerCase()) {
-                        displayDiv.innerHTML = `<div class="error">You don't own NFT #${tokenId}</div>`;
-                        return;
-                    }
-                    
-                    // Get additional data to verify the token is accessible
-                    try {
-                        const colors = await nftContract.methods.tokenColors(tokenId).call();
-                        const shapes = await nftContract.methods.tokenShapes(tokenId).call();
-                        console.log(`Token #${tokenId} colors:`, colors);
-                        console.log(`Token #${tokenId} shapes:`, shapes);
-                    } catch (dataError) {
-                        console.log(`Additional data not available for token #${tokenId}:`, dataError);
-                        // Continue even if this fails
-                    }
-                    
-                    const card = document.createElement('div');
-                    card.className = 'nft-card';
-                    await displayMyNFTInCard(card, tokenId);
-                    
-                    displayDiv.innerHTML = '';
-                    displayDiv.appendChild(card);
-                } catch (err) {
-                    console.error(`Error loading NFT #${tokenId}:`, err);
-                    
-                    // More detailed error handling
-                    if (err.message && err.message.includes('missing trie node')) {
-                        displayDiv.innerHTML = `<div class="error">Blockchain node synchronization issue. The RPC provider may be having trouble accessing this token's data. Try again later or try a different RPC endpoint.</div>`;
-                    } else if (err.message && err.message.includes('nonexistent token')) {
-                        displayDiv.innerHTML = `<div class="error">Token #${tokenId} does not exist</div>`;
-                    } else {
-                        displayDiv.innerHTML = `<div class="error">Error loading NFT #${tokenId}: ${err.message}</div>`;
-                    }
-                }
-                
-            });
         }
     } catch (error) {
-        console.error("Error loading my NFTs:", error);
-        document.getElementById('myNFTs').innerHTML = `<div class="error">Error loading your NFTs: ${error.message}</div>`;
+        console.error("Error loading NFTs:", error);
+        myNFTsContainer.innerHTML = `<div class="error">Error loading your NFTs: ${error.message}</div>`;
     }
 }
+
+// No longer needed - removed unused functions
 
 // Display user's NFT in card
 async function displayMyNFTInCard(cardElement, tokenId) {
     try {
         console.log(`Fetching NFT data for token #${tokenId}...`);
         
-        // Try alternative approach using generateSVG and direct metadata generation
-        // This avoids the "missing trie node" issue with tokenURI
+        // Get the token URI from the NFT contract
         let metadata;
         let imageUrl;
         
         try {
-            // First try direct metadata generation if available
-            try {
-                const metadataResult = await nftContract.methods.generateMetadata(tokenId).call();
-                console.log(`Generated metadata for NFT #${tokenId}:`, metadataResult);
-                
-                // Parse the metadata
-                const base64Data = metadataResult.split(',')[1];
-                const jsonString = atob(base64Data);
-                metadata = JSON.parse(jsonString);
-                imageUrl = metadata.image;
-            } catch (metadataError) {
-                console.log(`generateMetadata not available, trying tokenURI:`, metadataError);
-                
-                // Fall back to tokenURI
-                const tokenURI = await nftContract.methods.tokenURI(tokenId).call();
-                console.log(`Received tokenURI for NFT #${tokenId}:`, tokenURI);
-                
-                // Parse the tokenURI
-                const base64Data = tokenURI.split(',')[1];
-                const jsonString = atob(base64Data);
-                metadata = JSON.parse(jsonString);
-                imageUrl = metadata.image;
-            }
-        } catch (dataError) {
-            console.log(`Both metadata methods failed, trying direct SVG generation:`, dataError);
-            
-            // Try direct SVG generation as last resort
-            try {
-                const svgData = await nftContract.methods.generateSVG(tokenId).call();
-                console.log(`Generated SVG for NFT #${tokenId}`);
-                
-                // Create basic metadata with the SVG
-                imageUrl = `data:image/svg+xml;base64,${btoa(svgData)}`;
-                metadata = {
-                    name: `NFT #${tokenId}`,
-                    description: `TokenizeArt NFT #${tokenId}`,
-                    attributes: []
-                };
-            } catch (svgError) {
-                console.error(`Failed to generate SVG:`, svgError);
-                throw new Error(`Cannot retrieve NFT data: ${svgError.message}`);
-            }
+            const tokenURI = await nftContract.methods.tokenURI(tokenId).call();
+            console.log(`Received tokenURI for NFT #${tokenId}:`, tokenURI);
+            const jsonString = tokenURI.substring('data:application/json;utf8,'.length);
+            metadata = JSON.parse(jsonString);
+            imageUrl = metadata.image;
+
+        } catch (tokenURIError) {
+            console.error(`Error getting tokenURI for NFT #${tokenId}:`, tokenURIError);
+            throw tokenURIError;
         }
         
-        // Get additional attributes data
-        let attributesHtml = '';
-        if (metadata.attributes && metadata.attributes.length > 0) {
-            attributesHtml = '<div class="nft-attributes">';
-            for (const attr of metadata.attributes) {
-                attributesHtml += `<span>${attr.trait_type}: ${attr.value}</span>`;
-            }
-            attributesHtml += '</div>';
-        } else {
-            // Try to get direct attributes from contract
-            try {
-                const animalType = await nftContract.methods.tokenAnimalTypes(tokenId).call();
-                const colorIndex = await nftContract.methods.tokenColors(tokenId).call();
-                const bgColorIndex = await nftContract.methods.tokenBgColors(tokenId).call();
-                
-                attributesHtml = `<div class="nft-attributes">
-                    <span>Animal Type: ${animalType}</span>
-                    <span>Color: ${colorIndex}</span>
-                    <span>Background: ${bgColorIndex}</span>
-                </div>`;
-            } catch (attrError) {
-                console.log("Additional NFT attributes not available", attrError);
-            }
+        // Get the token type if available
+        let tokenType = '';
+        try {
+            tokenType = await nftContract.methods.getTokenTypeName(tokenId).call();
+        } catch (typeError) {
+            console.log(`Could not get token type for NFT #${tokenId}:`, typeError);
+            // Continue even if this fails
         }
         
+        // Display the NFT
         cardElement.innerHTML = `
             <div class="nft-image-container">
-                <img src="${imageUrl}" alt="${metadata.name}" class="nft-image" onerror="this.onerror=null; this.src='https://via.placeholder.com/200x200?text=Image+Error'">
+                <img src="${imageUrl}" alt="${metadata.name || `NFT #${tokenId}`}" class="nft-image" onerror="this.onerror=null; this.src='https://via.placeholder.com/200x200?text=Image+Error'">
             </div>
             <div class="nft-info">
-                <h3>${metadata.name}</h3>
+                <h3>${metadata.name || `NFT #${tokenId}`}</h3>
                 <p class="nft-description">${metadata.description ? metadata.description.substring(0, 50) + (metadata.description.length > 50 ? '...' : '') : `NFT #${tokenId}`}</p>
-                ${attributesHtml}
+                <p><strong>Token ID:</strong> ${tokenId}</p>
+                ${tokenType ? `<p><strong>Type:</strong> ${tokenType}</p>` : ''}
                 <div class="nft-actions">
-                    <button class="list-nft" onclick="openListNFTModal('${tokenId}')">List for Sale</button>
+                    <button class="list-nft" onclick="openListNFTModal('${NFT_ADDRESS}', ${tokenId})">List for Sale</button>
                 </div>
             </div>
         `;
@@ -618,9 +485,9 @@ async function displayMyNFTInCard(cardElement, tokenId) {
 }
 
 // Open listing modal
-function openListNFTModal(tokenId) {
+function openListNFTModal(nftContractAddress, tokenId) {
     document.getElementById('listingTokenId').value = tokenId;
-    document.getElementById('listingNFTContract').value = NFT_CONTRACT_ADDRESS;
+    document.getElementById('listingNFTContract').value = nftContractAddress;
     document.getElementById('priceTokenA').value = '';
     document.getElementById('priceTokenB').value = '';
     document.getElementById('listNFTModal').style.display = 'flex';
@@ -655,7 +522,7 @@ async function listNFTForSale() {
         await nftContract.methods.approve(NFT_MARKETPLACE_ADDRESS, tokenId).send({ from: accounts[0] });
         
         await marketplaceContract.methods.listNFT(
-            NFT_CONTRACT_ADDRESS,
+            NFT_ADDRESS,
             tokenId,
             priceTokenAWei,
             priceTokenBWei
