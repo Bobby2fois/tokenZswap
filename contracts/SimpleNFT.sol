@@ -21,16 +21,26 @@ contract SimpleNFT is ERC721, ERC721Enumerable, Ownable {
     // Mapping from token ID to NFT type
     mapping(uint256 => uint256) public tokenTypes;
     
-    // Base URL for NFT images
-    string public baseImageURI = "https://picsum.photos/seed/";
+    // IPFS gateway URL
+    string public ipfsGateway = "https://gateway.pinata.cloud/ipfs/";
+    
+    // IPFS CIDs for different NFT types
+    mapping(uint256 => string) public typeToCID;
     
     // Names for each NFT type
-    string[] private typeNames = ["Landscape", "Abstract", "Animal", "Nature", "Art"];
+    string[] private typeNames = ["frog", "frog2", "frog3", "frog4", "frog5"];
     
     constructor() 
-        ERC721("SimpleNFT", "SNFT")
+        ERC721("FrogNFT", "FROG")
         Ownable(msg.sender)
-    {}
+    {
+        // Initialize IPFS CIDs for each NFT type
+        typeToCID[0] = "bafkreif6ffqn337ys52ntlhd4g3u3fdizrmiejeryb2xs2jzyiptnbfaye";
+        typeToCID[1] = "bafybeid7rs3fyniwia6gvncufidg6ad2vhz6skhvpwptuujulrbreztkoa";
+        typeToCID[2] = "bafkreihdk4kqvztqqjnq5cgqlfpm5itiahvdsujyjqm5zxzahennyuz3mm";
+        typeToCID[3] = "bafkreidb47uotgrq6v6kfwmqj7i6c5ctuyw33ia6adlvq756rxctea7yje";
+        typeToCID[4] = "bafkreigxjawrg5mhxis7phktqa4tfqvoozopk6vswex3b6zbncisknvhya";
+    }
     
     /**
      * @dev See {IERC165-supportsInterface}.
@@ -97,18 +107,19 @@ contract SimpleNFT is ERC721, ERC721Enumerable, Ownable {
     }
     
     /**
-     * @dev Get the image URL for a token
+     * @dev Get the image URL for a token using IPFS
      */
     function tokenImageURI(uint256 tokenId) public view returns (string memory) {
         require(_ownerOf(tokenId) != address(0), "Token doesn't exist");
         
-        // Use the token ID as a seed for a random image from Lorem Picsum
-        // Each token will have a unique, but consistent image
-        return string(abi.encodePacked(
-            baseImageURI, 
-            tokenId.toString(),
-            "/300/300"
-        ));
+        // Get the NFT type for this token
+        uint256 nftType = tokenTypes[tokenId];
+        
+        // Get the IPFS CID for this NFT type
+        string memory cid = typeToCID[nftType];
+        
+        // Return the full IPFS gateway URL
+        return string(abi.encodePacked(ipfsGateway, cid));
     }
     
     /**
@@ -128,12 +139,11 @@ contract SimpleNFT is ERC721, ERC721Enumerable, Ownable {
         string memory imageUrl = tokenImageURI(tokenId);
         string memory typeName = getTokenTypeName(tokenId);
         
-        // Return JSON metadata directly (not base64 encoded)
         return string(abi.encodePacked(
             "data:application/json;utf8,",
             "{",
-            "\"name\": \"SimpleNFT #", tokenId.toString(), "\",",
-            "\"description\": \"A simple NFT for testing the marketplace\",",
+            "\"name\": \"Frog #", tokenId.toString(), "\",",
+            "\"description\": \"just a frog\",",
             "\"image\": \"", imageUrl, "\",",
             "\"attributes\": [",
             "  {\"trait_type\": \"Type\", \"value\": \"", typeName, "\"}",
@@ -143,9 +153,17 @@ contract SimpleNFT is ERC721, ERC721Enumerable, Ownable {
     }
     
     /**
-     * @dev Set a new base image URI
+     * @dev Set a new IPFS gateway URL
      */
-    function setBaseImageURI(string memory newBaseURI) public onlyOwner {
-        baseImageURI = newBaseURI;
+    function setIPFSGateway(string memory newGateway) public onlyOwner {
+        ipfsGateway = newGateway;
+    }
+    
+    /**
+     * @dev Update the IPFS CID for a specific NFT type
+     */
+    function setTypeCID(uint256 nftType, string memory newCID) public onlyOwner {
+        require(nftType < MAX_NFT_TYPES, "Invalid NFT type");
+        typeToCID[nftType] = newCID;
     }
 }

@@ -17,23 +17,34 @@ async function main() {
   const SimpleNFT = await hre.ethers.getContractFactory("SimpleNFT");
   const simpleNFT = SimpleNFT.attach(simpleNFTAddress);
   
-  const count = 5;
-  console.log(`Minting ${count} NFTs...`);
+  // Check if user already has NFTs
+  const currentBalance = await simpleNFT.balanceOf(deployer.address);
+  console.log(`Current NFT balance: ${currentBalance.toString()}`);
   
   try {
-    // Mint NFTs
-    const tx = await simpleNFT.mintBatch(deployer.address, count);
-    await tx.wait();
+    // Only mint if user has no NFTs
+    if (currentBalance > 0) {
+      console.log("\nYou already have NFTs. No need to mint more.");
+      console.log("Use the marketplace to list and trade your existing NFTs.");
+    } else {
+      // Mint 5 NFTs for first-time users
+      const count = 5;
+      console.log(`Minting ${count} NFTs...`);
+      
+      const tx = await simpleNFT.mintBatch(deployer.address, count);
+      await tx.wait();
+      
+      console.log(`Successfully minted ${count} NFTs to ${deployer.address}`);
+    }
     
-    console.log(`Successfully minted ${count} NFTs to ${deployer.address}`);
-    
-    // Get the current token count
+    // Get the updated token count
     const balance = await simpleNFT.balanceOf(deployer.address);
-    console.log(`Current NFT balance: ${balance.toString()}`);
+    console.log(`Updated NFT balance: ${balance.toString()}`);
     
-    // List NFTs the user now owns
+    // List NFTs the user now owns (up to 10)
     console.log("\nYour NFTs:");
-    const tokenCount = 5;
+    // Convert BigInt to Number for Math.min
+    const tokenCount = Math.min(Number(balance), 10); // Show up to 10 NFTs
     
     for (let i = 0; i < tokenCount; i++) {
       const tokenId = await simpleNFT.tokenOfOwnerByIndex(deployer.address, i);
