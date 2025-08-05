@@ -14,8 +14,7 @@ async function main() {
   let tokenAAddress = process.env.TOKEN_A_ADDRESS;
   let tokenBAddress = process.env.TOKEN_B_ADDRESS;
   
-  if (!tokenAAddress || tokenAAddress === '0x186856b5B97Caf654dc51aE46c33757304b5BdFE' ||
-      !tokenBAddress || tokenBAddress === '0x14974761C8e06ACf6906bf7efC90B608EbFfb058') {
+  if (!tokenAAddress || !tokenBAddress) {
     console.log("\nWARNING: You need to set valid TOKEN_A_ADDRESS and TOKEN_B_ADDRESS in your .env file.");
     process.exit(1);
   }

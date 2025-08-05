@@ -1,11 +1,10 @@
 // NFT Marketplace JavaScript
 
 // Contract addresses - update these with your deployed contract addresses
-const NFT_MARKETPLACE_ADDRESS = "0x582b6DDF45E8b54ada9997A5fC782D419D179106";
-const TOKEN_A_ADDRESS = "0x186856b5B97Caf654dc51aE46c33757304b5BdFE";
-const TOKEN_B_ADDRESS = "0x14974761C8e06ACf6906bf7efC90B608EbFfb058";
-const NFT_ADDRESS = "0x0383F49b180823204917F12A1D0dB1cFfa3d9383";
-
+const NFT_MARKETPLACE_ADDRESS = "0x5149386B6a9b3CA7C0bB174a0d0f6ED8B03F860f";
+const TOKEN_A_ADDRESS = "0x67d9b68Fc38860F544Ea59AD2A7c46DB669CD696";
+const TOKEN_B_ADDRESS = "0xCf182581A83aC8BeffC42B22D8763561C6f21c1B";
+const NFT_ADDRESS = "0x37fbd07747aEd13782E0B2E175eAaC60B5931762";
 
 // ABIs
 const NFT_MARKETPLACE_ABI = [
@@ -429,13 +428,29 @@ async function buyNFTWithToken(listingId, tokenType) {
         
         // Check if user has enough balance
         const balance = await tokenContract.methods.balanceOf(accounts[0]).call();
-        if (web3.utils.toBN(balance).lt(web3.utils.toBN(price))) {
-            alert(`Insufficient Token ${tokenType} balance. You need ${web3.utils.fromWei(price, 'ether')} tokens.`);
+        
+        // Use BN.js for safer comparison of large numbers
+        try {
+            const balanceBN = web3.utils.toBN(balance);
+            const priceBN = web3.utils.toBN(price);
+            
+            console.log(`Token ${tokenType} Balance: ${balanceBN.toString()}, Required: ${priceBN.toString()}`);
+            
+            if (balanceBN.lt(priceBN)) {
+                alert(`Insufficient Token ${tokenType} balance. You need ${web3.utils.fromWei(price, 'ether')} tokens.`);
+                return;
+            }
+        } catch (error) {
+            console.error("Error comparing token balances:", error);
+            alert(`Error comparing token balances: ${error.message}`);
             return;
         }
         
         // Approve the marketplace to spend the exact amount of tokens needed
-        await tokenContract.methods.approve(NFT_MARKETPLACE_ADDRESS, price).send({ from: accounts[0] });
+        // Convert to string to ensure large numbers are handled properly
+        const priceString = price.toString();
+        console.log(`Approving ${priceString} tokens for NFT purchase`);
+        await tokenContract.methods.approve(NFT_MARKETPLACE_ADDRESS, priceString).send({ from: accounts[0] });
         
         // Execute the purchase based on which token is being used
         if (tokenType === 'A') {

@@ -1,9 +1,9 @@
 // TokenSwap AMM Frontend JavaScript
 
 // Contract addresses - update these after deployment
-const TOKEN_SWAP_ADDRESS = '0xf6409bf7B6f0AD04eA0299a00b143c208166b8A7';
-const TOKEN_A_ADDRESS = '0x186856b5B97Caf654dc51aE46c33757304b5BdFE';
-const TOKEN_B_ADDRESS = '0x14974761C8e06ACf6906bf7efC90B608EbFfb058';
+const TOKEN_SWAP_ADDRESS = '0x6C31e63A2D0aB422d7D68f56829bb927aa10ED03';
+const TOKEN_A_ADDRESS = '0x67d9b68Fc38860F544Ea59AD2A7c46DB669CD696';
+const TOKEN_B_ADDRESS = '0xCf182581A83aC8BeffC42B22D8763561C6f21c1B';
 
 // ABIs - will be loaded from JSON files
 let TOKEN_SWAP_ABI;
@@ -318,6 +318,14 @@ async function calculateEstimatedOutput() {
                 const reserves = await tokenSwapContract.methods.getReserves().call();
                 currentReserveA = reserves[0];
                 currentReserveB = reserves[1];
+                // Check if there's still no liquidity after fetching reserves
+                if (currentReserveA === '0' || currentReserveB === '0') {
+                    document.getElementById('estimatedOutput').textContent = '0';
+                    document.getElementById('swapStatus').textContent = 'No liquidity in the pool. Please add liquidity first before swapping.';
+                    document.getElementById('swapStatus').classList.remove('hidden');
+                    document.getElementById('swapStatus').classList.add('warning');
+                    return;
+                }
             } catch (reserveError) {
                 console.error("Error fetching reserves:", reserveError);
                 document.getElementById('estimatedOutput').textContent = 'Calculating...';
@@ -341,11 +349,17 @@ async function calculateEstimatedOutput() {
         } catch (calcError) {
             console.error("Error calculating amount out:", calcError);
             
-            // Show a more user-friendly error message
+           // Check if the error is due to no liquidity
+           if (currentReserveA === '0' || currentReserveB === '0') {
+            document.getElementById('estimatedOutput').textContent = '0';
+            document.getElementById('swapStatus').textContent = 'No liquidity in the pool. Please add liquidity first before swapping.';
+        } else {
+            // Show a more user-friendly error message for other errors
             document.getElementById('estimatedOutput').textContent = 'Calculating...';
             document.getElementById('swapStatus').textContent = 'Network issue: Estimated output temporarily unavailable. You can still proceed with the swap.';
-            document.getElementById('swapStatus').classList.remove('hidden');
-            document.getElementById('swapStatus').classList.add('warning');
+        }
+        document.getElementById('swapStatus').classList.remove('hidden');
+        document.getElementById('swapStatus').classList.add('warning');
         }
     } catch (error) {
         console.error("Error calculating estimated output:", error);
@@ -673,6 +687,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         updateSwapButtonState();
         // Validate swap amount as user types
         validateSwapAmount();
+        // Clear error message if input is empty
+        if (!document.getElementById('swapAmount').value) {
+            document.getElementById('swapStatus').classList.add('hidden');
+        }
     });
     document.getElementById('approveSwap').addEventListener('click', approveSwap);
     document.getElementById('executeSwap').addEventListener('click', executeSwap);
@@ -695,7 +713,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
     
     // Validate remove liquidity amount as user types
-    document.getElementById('removeAmount').addEventListener('input', validateRemoveLiquidityAmount);
+    document.getElementById('removeAmount').addEventListener('input', () => { 
+        validateRemoveLiquidityAmount();
+
+        // Clear error message if input is empty
+        if (!document.getElementById('removeAmount').value) {
+            document.getElementById('removeLiquidityStatus').classList.add('hidden');
+        }
+    });
     
     // Initialize buttons as disabled
     updateAddLiquidityButtonState();
