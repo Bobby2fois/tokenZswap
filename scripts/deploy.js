@@ -10,46 +10,63 @@ async function main() {
   
   console.log("Deploying contracts with the account:", deployer.address);
 
-  // Check if we have token addresses in environment variables
-  let tokenAAddress = process.env.TOKEN_A_ADDRESS;
-  let tokenBAddress = process.env.TOKEN_B_ADDRESS;
-  
-  if (!tokenAAddress || !tokenBAddress) {
+  // Replace these with your actual token addresses
+  let TOKEN_A_ADDRESS = process.env.TOKEN_A_ADDRESS;
+  let TOKEN_B_ADDRESS = process.env.TOKEN_B_ADDRESS;
+    
+    
+  if (!TOKEN_A_ADDRESS || !TOKEN_B_ADDRESS) {
     console.log("\nWARNING: You need to set valid TOKEN_A_ADDRESS and TOKEN_B_ADDRESS in your .env file.");
     process.exit(1);
   }
 
-  // Deploy the TokenSwap contract
+  // Deploy the TokenSwap AMM contract
   console.log("\nDeploying TokenSwap contract...");
   const TokenSwap = await hre.ethers.getContractFactory("TokenSwap");
-  const tokenSwap = await TokenSwap.deploy(tokenAAddress, tokenBAddress);
+  const tokenSwap = await TokenSwap.deploy(TOKEN_A_ADDRESS, TOKEN_B_ADDRESS);
 
   await tokenSwap.waitForDeployment();
   
   const tokenSwapAddress = await tokenSwap.getAddress();
-  console.log("TokenSwap deployed to:", tokenSwapAddress);
 
-  console.log("\nConfiguration:");
-  console.log("- Token A Address:", tokenAAddress);
-  console.log("- Token B Address:", tokenBAddress);
-  console.log("- TokenSwap Address:", tokenSwapAddress);
+  // Deploying Marketplace contract
+  console.log("Deploying NFTMarketplace...");
+  // Get the contract factory
+  const NFTMarketplace = await hre.ethers.getContractFactory("NFTMarketplace");
+  const nftMarketplace = await NFTMarketplace.deploy(TOKEN_A_ADDRESS, TOKEN_B_ADDRESS);
 
-  // For easier verification later
-  console.log("\nVerify with:");
-  console.log(`npx hardhat verify --network bnbTestnet ${tokenSwapAddress} ${tokenAAddress} ${tokenBAddress}`);
+  await nftMarketplace.waitForDeployment();
+
+  const nftMarketplaceAddress = await nftMarketplace.getAddress();
+
+  // Minting NFTs
+  const simpleNFTAddress = process.env.NFT_ADDRESS;
+  if (!simpleNFTAddress) {
+    console.error("Please set the NFT_ADDRESS in your .env file");
+    return;
+  }
   
+  const SimpleNFT = await hre.ethers.getContractFactory("SimpleNFT");
+  const simpleNFT = SimpleNFT.attach(simpleNFTAddress);
+
+  const count = 5;
+  console.log(`Minting ${count} NFTs...`);
+      
+  const tx = await simpleNFT.mintBatch(deployer.address, count);
+  await tx.wait();
+
   // Output for updating frontend
-  console.log("\nUpdate your frontend/app.js with these addresses:");
+  console.log("\n=== Deployment Summary ===");
+  console.log("\nUpdate this address in your frontend marketplace.js file:");
+  console.log("\nUpdate frontend/app.js and frontend/marketplace.js with these addresses:");
+  console.log(`const NFT_MARKETPLACE_ADDRESS = '${nftMarketplaceAddress}';`);
   console.log(`const TOKEN_SWAP_ADDRESS = '${tokenSwapAddress}';`);
-  console.log(`const TOKEN_A_ADDRESS = '${tokenAAddress}';`);
-  console.log(`const TOKEN_B_ADDRESS = '${tokenBAddress}';`);
+
 }
 
-// We recommend this pattern to be able to use async/await everywhere
-// and properly handle errors.
 main()
   .then(() => process.exit(0))
   .catch((error) => {
-    console.error(error);
+    console.error("Error during deployment", error);
     process.exit(1);
   });

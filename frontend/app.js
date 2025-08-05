@@ -1,9 +1,9 @@
 // TokenSwap AMM Frontend JavaScript
 
 // Contract addresses - update these after deployment
-const TOKEN_SWAP_ADDRESS = '0x6C31e63A2D0aB422d7D68f56829bb927aa10ED03';
-const TOKEN_A_ADDRESS = '0x67d9b68Fc38860F544Ea59AD2A7c46DB669CD696';
-const TOKEN_B_ADDRESS = '0xCf182581A83aC8BeffC42B22D8763561C6f21c1B';
+const TOKEN_SWAP_ADDRESS = '0x3F3EE5C0aC30cCC0953f89ADf18D71D92828B5FB';
+const TOKEN_A_ADDRESS = '0x20dE2Eb1aE8525F3ad0599faA2Bc46497c5B7249';
+const TOKEN_B_ADDRESS = '0x2261d1Ba09a0e62887dcFf7C625098fdbE69fC5e';
 
 // ABIs - will be loaded from JSON files
 let TOKEN_SWAP_ABI;
@@ -690,6 +690,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         // Clear error message if input is empty
         if (!document.getElementById('swapAmount').value) {
             document.getElementById('swapStatus').classList.add('hidden');
+            // Enable the approve button when input is cleared
+            const approveSwapButton = document.getElementById('approveSwap');
+            approveSwapButton.disabled = false;
+            approveSwapButton.style.opacity = '1';
         }
     });
     document.getElementById('approveSwap').addEventListener('click', approveSwap);
@@ -719,6 +723,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         // Clear error message if input is empty
         if (!document.getElementById('removeAmount').value) {
             document.getElementById('removeLiquidityStatus').classList.add('hidden');
+            // Enable the remove liquidity button when input is cleared
+            const removeLiquidityButton = document.getElementById('removeLiquidity');
+            removeLiquidityButton.disabled = false;
+            removeLiquidityButton.style.opacity = '1';
         }
     });
     
