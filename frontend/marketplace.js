@@ -439,6 +439,9 @@ async function loadMarketplaceListings() {
             return;
         }
         
+        // Track unique NFTs by their contract address and token ID to prevent duplicates
+        const uniqueNFTs = new Map();
+        
         for (let i = 0; i < listings[0].length; i++) {
             const listingId = listings[0][i];
             const seller = listings[1][i];
@@ -446,6 +449,18 @@ async function loadMarketplaceListings() {
             const tokenId = listings[3][i];
             const priceTokenA = listings[4][i];
             const priceTokenB = listings[5][i];
+            
+            // Create a unique key for each NFT
+            const nftKey = `${nftContractAddress}-${tokenId}`;
+            
+            // Skip if we've already added this NFT
+            if (uniqueNFTs.has(nftKey)) {
+                console.log(`Skipping duplicate NFT: ${nftKey}`);
+                continue;
+            }
+            
+            // Mark this NFT as processed
+            uniqueNFTs.set(nftKey, listingId);
             
             const card = document.createElement('div');
             card.className = 'nft-card';
@@ -455,6 +470,11 @@ async function loadMarketplaceListings() {
             await displayNFTInCard(card, nftContractAddress, tokenId, {
                 seller, priceTokenA, priceTokenB, listingId
             });
+        }
+        
+        // If no unique NFTs were found after filtering
+        if (uniqueNFTs.size === 0) {
+            listingsContainer.innerHTML = '<p>No NFTs currently listed for sale.</p>';
         }
     } catch (error) {
         console.error("Error loading marketplace listings:", error);
@@ -804,6 +824,75 @@ async function loadMyNFTs() {
     } catch (error) {
         console.error("Error loading NFTs:", error);
         myNFTsContainer.innerHTML = `<div class="error">Error loading your NFTs: ${error.message}</div>`;
+    }
+}
+
+// Helper function to parse token URI and extract metadata
+async function parseTokenURI(tokenURI) {
+    try {
+        console.log('Parsing token URI:', tokenURI);
+        
+        if (!tokenURI) {
+            console.error('Empty tokenURI provided');
+            return { name: 'Unknown NFT', description: 'No metadata available', image: '' };
+        }
+        
+        // Handle base64 encoded JSON
+        if (tokenURI.startsWith('data:application/json;base64,')) {
+            console.log('Found base64 encoded JSON metadata');
+            const base64Data = tokenURI.replace('data:application/json;base64,', '');
+            const jsonString = atob(base64Data);
+            console.log('Decoded JSON string:', jsonString.substring(0, 100) + '...');
+            const metadata = JSON.parse(jsonString);
+            console.log('Parsed metadata object:', metadata);
+            return metadata;
+        } 
+        // Handle utf8 encoded JSON (used by SimpleNFT contract)
+        else if (tokenURI.startsWith('data:application/json;utf8,')) {
+            console.log('Found utf8 encoded JSON metadata');
+            const jsonString = tokenURI.replace('data:application/json;utf8,', '');
+            console.log('Decoded JSON string:', jsonString.substring(0, 100) + '...');
+            const metadata = JSON.parse(jsonString);
+            console.log('Parsed metadata object:', metadata);
+            return metadata;
+        }
+        // Handle regular HTTP URLs
+        else {
+            console.log('Fetching metadata from URL');
+            const response = await fetch(tokenURI);
+            const metadata = await response.json();
+            return metadata;
+        }
+    } catch (error) {
+        console.error('Error parsing token URI:', error);
+        return { name: 'Unknown NFT', description: 'Metadata could not be loaded', image: '' };
+    }
+}
+
+// Function to fetch NFT metadata from tokenURI
+async function fetchNFTMetadata(tokenURI) {
+    try {
+        const metadata = await parseTokenURI(tokenURI);
+        console.log('Parsed metadata:', metadata); // Debug log
+        
+        // Ensure we have valid metadata
+        if (!metadata) {
+            console.error('Invalid metadata returned from parseTokenURI');
+            return { name: 'Unknown NFT', description: 'Metadata could not be loaded', image: '' };
+        }
+        
+        // Handle base64 encoded images and other formats
+        if (metadata.image) {
+            // Image URL is already present, return as is
+            console.log('Image URL found:', metadata.image); // Debug log
+            return metadata;
+        } else {
+            console.error('No image URL in metadata');
+            return { ...metadata, name: metadata.name || 'Unknown NFT', image: '' };
+        }
+    } catch (error) {
+        console.error('Error fetching NFT metadata:', error);
+        return { name: 'Unknown NFT', description: 'Metadata could not be loaded', image: '' };
     }
 }
 
