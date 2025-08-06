@@ -4,140 +4,113 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>TokenSwap AMM</title>
-    <style>
-        .nav-buttons {
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: 20px;
-        }
-        body {
-            font-family: Arial, sans-serif;
-            max-width: 800px;
-            margin: 0 auto;
-            padding: 20px;
-            line-height: 1.6;
-        }
-        .container {
-            margin-bottom: 20px;
-            padding: 15px;
-            border: 1px solid #ddd;
-            border-radius: 5px;
-        }
-        h2 {
-            margin-top: 0;
-        }
-        button {
-            background-color: #4CAF50;
-            color: white;
-            padding: 10px 15px;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            margin: 5px 0;
-        }
-        button:hover {
-            background-color: #45a049;
-        }
-        button:disabled, button.disabled {
-            background-color: #cccccc;
-            cursor: not-allowed;
-            opacity: 0.5;
-        }
-        input {
-            padding: 8px;
-            margin: 5px 0;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            width: 100%;
-            box-sizing: border-box;
-        }
-        .hidden {
-            display: none;
-        }
-        .error {
-            color: red;
-            margin: 10px 0;
-        }
-        .warning {
-            color: #ff9900;
-            margin: 10px 0;
-        }
-        .success {
-            color: green;
-            margin: 10px 0;
-        }
-    </style>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
 </head>
 <body>
-    <div class="nav-buttons">
-        <h1>TokenSwap AMM</h1>
-        <button id="goToMarketplace" onclick="window.location.href='marketplace.html'">Go to Marketplace</button>
-    </div>
-    
-    <div class="container">
-        <h2>Connect Wallet</h2>
-        <button id="connectWallet">Connect to MetaMask</button>
-        <div id="walletInfo" class="hidden">
-            <p>Connected Address: <span id="userAddress"></span></p>
+    <div class="app-container">
+        <!-- Header with Navigation -->
+        <header class="header">
+            <a href="index.html" class="logo">TokenZswap</a>
+            <div class="nav-links">
+                <a href="index.html" class="nav-link active">Swap</a>
+                <a href="liquidity.html" class="nav-link">Liquidity</a>
+                <a href="marketplace.html" class="nav-link">NFT Marketplace</a>
+            </div>
+        </header>
+
+        <!-- Connect Wallet Section -->
+        <div class="connect-wallet-container">
+            <button id="connectWallet" class="connect-wallet">Connect Wallet</button>
         </div>
-    </div>
-    
-    <div class="container hidden" id="poolInfoContainer">
-        <h2>Pool Information</h2>
-        <p>Reserve A: <span id="reserveA">0</span></p>
-        <p>Reserve B: <span id="reserveB">0</span></p>
-        <p>Your LP Tokens: <span id="lpBalance">0</span></p>
-        <p>Your Token A Balance: <span id="tokenABalance">0</span></p>
-        <p>Your Token B Balance: <span id="tokenBBalance">0</span></p>
-        <button id="refreshPool">Refresh Pool Data</button>
-    </div>
-    
-    <div class="container hidden" id="swapContainer">
-        <h2>Swap Tokens</h2>
-        <div>
-            <label for="swapDirection">Swap Direction:</label>
-            <select id="swapDirection">
+        <div id="walletInfo" class="hidden">
+            <p>Connected: <span id="userAddress"></span></p>
+        </div>
+
+        <!-- Main Content Layout -->
+        <div class="swap-layout hidden" id="mainContent">
+            <!-- Reserve Information (Left Side) -->
+            <div class="reserve-info-sidebar">
+                <div class="reserve-info-header">
+                    <h3>Pool Reserves</h3>
+                    <button id="refreshPool" class="btn-icon"><i class="fas fa-sync-alt"></i></button>
+                </div>
+                <div class="reserve-info-item">
+                    <span class="reserve-info-label">Reserve A:</span>
+                    <span class="reserve-info-value" id="reserveA">0</span>
+                </div>
+                <div class="reserve-info-item">
+                    <span class="reserve-info-label">Reserve B:</span>
+                    <span class="reserve-info-value" id="reserveB">0</span>
+                </div>
+            </div>
+
+            <!-- Hidden elements to store values -->
+            <div class="hidden">
+                <span id="lpBalance">0</span>
+                <span id="tokenABalance">0</span>
+                <span id="tokenBBalance">0</span>
+            </div>
+
+            <!-- Swap Card (Center) -->
+        <div class="card hidden" id="swapContainer">
+            <div class="card-header">
+                <h2 class="card-title">Swap</h2>
+                <div class="settings-icon">
+                    <i class="fas fa-cog"></i>
+                </div>
+            </div>
+
+            <!-- From Token Input -->
+            <div class="form-group">
+                <div class="input-container">
+                    <div class="input-label">
+                        <span>From</span>
+                        <span id="fromBalance">Balance: 0</span>
+                    </div>
+                    <div class="token-input">
+                        <input type="number" id="swapAmount" placeholder="0.0">
+                        <div class="token-selector" id="fromTokenSelector">
+                            <span id="fromTokenSymbol">Token A</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Swap Direction Button -->
+                <div class="swap-direction-button" id="swapDirectionButton">
+                    <i class="fas fa-arrow-down"></i>
+                </div>
+
+                <!-- To Token Input -->
+                <div class="input-container">
+                    <div class="input-label">
+                        <span>To (estimated)</span>
+                        <span id="toBalance">Balance: 0</span>
+                    </div>
+                    <div class="token-input">
+                        <input type="text" id="estimatedOutput" placeholder="0.0" disabled>
+                        <div class="token-selector" id="toTokenSelector">
+                            <span id="toTokenSymbol">Token B</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Hidden swap direction select for compatibility -->
+            <select id="swapDirection" class="hidden">
                 <option value="AtoB">A to B</option>
                 <option value="BtoA">B to A</option>
             </select>
-        </div>
-        <div>
-            <label for="swapAmount">Amount to Swap:</label>
-            <input type="number" id="swapAmount" placeholder="Enter amount">
-        </div>
-        <p>Estimated Output: <span id="estimatedOutput">0</span></p>
-        <button id="approveSwap">1. Approve</button>
-        <button id="executeSwap" disabled style="opacity: 0.5;">2. Swap</button>
-        <p id="swapStatus" class="hidden"></p>
-    </div>
-    
-    <div class="container hidden" id="liquidityContainer">
-        <h2>Manage Liquidity</h2>
-        <div id="addLiquiditySection">
-            <h3>Add Liquidity</h3>
-            <div>
-                <label for="addAmountA">Amount of Token A:</label>
-                <input type="number" id="addAmountA" placeholder="Enter amount">
-            </div>
-            <div>
-                <label for="addAmountB">Amount of Token B:</label>
-                <input type="number" id="addAmountB" placeholder="Enter amount">
-            </div>
-            <button id="liquidityActionButton">Approve Tokens</button>
-            <p id="addLiquidityStatus" class="hidden"></p>
-        </div>
-        
-        <div id="removeLiquiditySection">
-            <h3>Remove Liquidity</h3>
-            <div>
-                <label for="removeAmount">LP Tokens to Burn:</label>
-                <input type="number" id="removeAmount" placeholder="Enter amount">
-            </div>
-            <button id="removeLiquidity">Remove Liquidity</button>
-            <p id="removeLiquidityStatus" class="hidden"></p>
+
+            <!-- Swap Button -->
+            <button id="approveSwap" class="btn btn-primary">Approve</button>
+            <button id="executeSwap" class="btn btn-secondary hidden">Swap</button>
+            <p id="swapStatus" class="status-message hidden"></p>
         </div>
     </div>
+
     <script src="https://cdn.jsdelivr.net/npm/web3@1.8.0/dist/web3.min.js"></script>
-    <script src="app.js"></script>
+    <script src="swap.js"></script>
 </body>
 </html>

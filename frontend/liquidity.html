@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TokenSwap AMM - Liquidity</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Header with Navigation -->
+        <header class="header">
+            <a href="index.html" class="logo">TokenZswap</a>
+            <div class="nav-links">
+                <a href="index.html" class="nav-link">Swap</a>
+                <a href="liquidity.html" class="nav-link active">Liquidity</a>
+                <a href="marketplace.html" class="nav-link">NFT Marketplace</a>
+            </div>
+        </header>
+
+        <!-- Connect Wallet Section -->
+        <div class="connect-wallet-container">
+            <button id="connectWallet" class="connect-wallet">Connect Wallet</button>
+        </div>
+        <div id="walletInfo" class="hidden">
+            <p>Connected: <span id="userAddress"></span></p>
+        </div>
+
+        <!-- Hidden elements to store values -->
+        <div class="hidden">
+            <span id="reserveA">0</span>
+            <span id="reserveB">0</span>
+            <span id="lpBalance">0</span>
+            <span id="tokenABalance">0</span>
+            <span id="tokenBBalance">0</span>
+        </div>
+
+        <!-- Add Liquidity Card -->
+        <div class="card hidden" id="addLiquidityContainer">
+            <div class="card-header">
+                <h2 class="card-title">Add Liquidity</h2>
+            </div>
+            <div class="form-group">
+                <!-- Token A Input -->
+                <div class="input-container">
+                    <div class="input-label">
+                        <span>Token A</span>
+                        <span id="addTokenABalance">Balance: 0</span>
+                    </div>
+                    <div class="token-input">
+                        <input type="number" id="addAmountA" placeholder="0.0" min="0" step="any">
+                        <div class="token-selector">
+                            <span>Token A</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Spacer between inputs -->
+                <div class="input-spacer"></div>
+
+                <!-- Token B Input -->
+                <div class="input-container">
+                    <div class="input-label">
+                        <span>Token B</span>
+                        <span id="addTokenBBalance">Balance: 0</span>
+                    </div>
+                    <div class="token-input">
+                        <input type="number" id="addAmountB" placeholder="0.0" class="auto-calculated" min="0" step="any">
+                        <div class="token-selector">
+                            <span>Token B</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Add Liquidity Button -->
+            <button id="liquidityActionButton" class="btn btn-primary">Approve Tokens</button>
+            <p id="addLiquidityStatus" class="status-message hidden"></p>
+        </div>
+
+        <!-- Remove Liquidity Card -->
+        <div class="card hidden" id="removeLiquidityContainer">
+            <div class="card-header">
+                <h2 class="card-title">Remove Liquidity</h2>
+            </div>
+            <div class="form-group">
+                <div class="input-container">
+                    <div class="input-label">
+                        <span>LP Tokens to Burn</span>
+                        <span id="lpTokenBalance">Balance: 0</span>
+                    </div>
+                    <div class="token-input">
+                        <input type="number" id="removeAmount" placeholder="0.0" min="0" step="any">
+                        <div class="token-selector">
+                            <span>LP</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Remove Liquidity Button -->
+            <button id="removeLiquidity" class="btn btn-primary">Remove Liquidity</button>
+            <p id="removeLiquidityStatus" class="status-message hidden"></p>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/web3@1.8.0/dist/web3.min.js"></script>
+    <script src="liquidity.js"></script>
+</body>
+</html>
