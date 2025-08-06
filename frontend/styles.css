@@ -31,6 +31,30 @@ body {
     padding: 20px;
 }
 
+/* Marketplace specific container */
+.marketplace-container {
+    max-width: 1200px !important;
+    margin: 0 auto;
+}
+
+/* NFT Marketplace button styles */
+.list-nft {
+    width: 100%;
+    padding: 12px;
+    border: none;
+    border-radius: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color 0.2s;
+    font-size: 16px;
+    background-color: var(--secondary-color);
+    color: white;
+}
+
+.list-nft:hover {
+    background-color: #1A65D4;
+}
+
 /* Header and Navigation */
 .header {
     display: flex;
@@ -75,7 +99,7 @@ body {
 }
 
 .connect-wallet {
-    background-color: var(--primary-color);
+    background-color: var(--secondary-color);
     color: white;
     padding: 10px 16px;
     border: none;
@@ -86,7 +110,7 @@ body {
 }
 
 .connect-wallet:hover {
-    background-color: #E5006E;
+    background-color: #1A65D4;
 }
 
 .connect-wallet.connected {
@@ -311,12 +335,12 @@ body {
 }
 
 .btn-primary {
-    background-color: var(--primary-color);
+    background-color: var(--secondary-color);
     color: white;
 }
 
 .btn-primary:hover {
-    background-color: #E5006E;
+    background-color: #1A65D4;
 }
 
 .btn:disabled, .btn-primary:disabled, .btn-secondary:disabled {

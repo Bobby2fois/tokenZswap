@@ -89,6 +89,28 @@ let tokenBContract;
 document.addEventListener('DOMContentLoaded', async function() {
     document.getElementById('connectButton').addEventListener('click', connectWallet);
     
+    // Set up modal close buttons
+    const closeDetailBtn = document.getElementById('closeDetailBtn');
+    if (closeDetailBtn) {
+        closeDetailBtn.addEventListener('click', closeAllModals);
+    }
+    
+    const cancelListingBtn = document.getElementById('cancelListingBtn');
+    if (cancelListingBtn) {
+        cancelListingBtn.addEventListener('click', closeAllModals);
+    }
+    
+    const cancelBuyBtn = document.getElementById('cancelBuyBtn');
+    if (cancelBuyBtn) {
+        cancelBuyBtn.addEventListener('click', closeAllModals);
+    }
+    
+    // Make sure only one tab is visible on page load
+    // We need to delay this until after wallet connection to avoid errors
+    setTimeout(() => {
+        openTab('browse');
+    }, 100);
+    
     // Check if wallet was previously connected
     if (localStorage.getItem('walletConnected') === 'true') {
         console.log('Wallet was previously connected, attempting to reconnect...');
@@ -96,51 +118,100 @@ document.addEventListener('DOMContentLoaded', async function() {
     }
     
     // Initialize modal close buttons
-    document.getElementById('closeDetailBtn').addEventListener('click', function() {
-        document.getElementById('nftDetailModal').style.display = 'none';
-    });
+    document.getElementById('closeDetailBtn').addEventListener('click', closeAllModals);
+    document.getElementById('cancelListingBtn').addEventListener('click', closeAllModals);
+    document.getElementById('cancelBuyBtn').addEventListener('click', closeAllModals);
     
     // Close modals when clicking outside
-    document.getElementById('listNFTModal').addEventListener('click', function(e) {
-        if (e.target === this) {
-            this.style.display = 'none';
-        }
+    const modals = document.querySelectorAll('.modal');
+    modals.forEach(modal => {
+        modal.addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeAllModals();
+            }
+        });
     });
     
-    document.getElementById('nftDetailModal').addEventListener('click', function(e) {
-        if (e.target === this) {
-            this.style.display = 'none';
+    // Close modals with Escape key
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+            closeAllModals();
         }
     });
 });
 
+// Function to close all modals
+function closeAllModals() {
+    const modals = document.querySelectorAll('.modal');
+    modals.forEach(modal => {
+        modal.style.display = 'none';
+    });
+    
+    // Also clear any status messages
+    const statusElements = document.querySelectorAll('#listingStatus, #buyStatus');
+    statusElements.forEach(element => {
+        element.textContent = '';
+        element.classList.remove('warning', 'error', 'success');
+        element.classList.add('hidden');
+    });
+}
+
 // Tab functionality
 function openTab(tabName) {
+    console.log('Opening tab:', tabName);
+    closeAllModals();
+    
+    // Hide all tab contents
     const tabContents = document.getElementsByClassName('tab-content');
     for (let i = 0; i < tabContents.length; i++) {
         tabContents[i].classList.remove('active');
     }
     
+    // Remove active class from all tab buttons
     const tabButtons = document.getElementsByClassName('tab-button');
     for (let i = 0; i < tabButtons.length; i++) {
         tabButtons[i].classList.remove('active');
     }
     
-    document.getElementById(tabName).classList.add('active');
-    
-    const buttons = document.getElementsByClassName('tab-button');
-    for (let i = 0; i < buttons.length; i++) {
-        if (buttons[i].getAttribute('onclick').includes(tabName)) {
-            buttons[i].classList.add('active');
-        }
+    // Show the selected tab content
+    const selectedTab = document.getElementById(tabName);
+    if (selectedTab) {
+        selectedTab.classList.add('active');
+    } else {
+        console.error('Tab not found:', tabName);
+        return; // Exit if tab not found
     }
     
-    if (tabName === 'browseTab') {
-        loadMarketplaceListings();
-    } else if (tabName === 'myNFTsTab') {
-        loadMyNFTs();
-    } else if (tabName === 'myListingsTab') {
-        loadMyListings();
+    // Highlight the active tab button
+    const tabButton = document.getElementById(tabName + 'Btn');
+    if (tabButton) {
+        tabButton.classList.add('active');
+    } else {
+        console.error('Tab button not found for:', tabName);
+    }
+    
+    // Only load content if we have a wallet connection
+    if (!web3 || !accounts || accounts.length === 0) {
+        // Show message to connect wallet first
+        const container = document.getElementById(tabName === 'browse' ? 'nftListings' : 
+                                               tabName === 'myNFTs' ? 'myNFTsList' : 'myListings');
+        if (container) {
+            container.innerHTML = '<div class="message">Please connect your wallet to view content</div>';
+        }
+        return;
+    }
+    
+    try {
+        // Load content based on which tab is selected
+        if (tabName === 'browse') {
+            loadMarketplaceListings();
+        } else if (tabName === 'myNFTs') {
+            loadMyNFTs();
+        } else if (tabName === 'myListings') {
+            loadMyListings();
+        }
+    } catch (error) {
+        console.error('Error loading tab content:', error);
     }
 }
 
@@ -293,9 +364,8 @@ async function connectWallet() {
         if (await initWeb3()) {
             document.getElementById('connectButton').textContent = `Connected: ${accounts[0].substring(0, 6)}...${accounts[0].substring(38)}`;
             document.getElementById('connectButton').disabled = true;
-            document.getElementById('walletStatus').textContent = 'Wallet connected!';
-            document.getElementById('walletStatus').classList.remove('hidden');
-            document.getElementById('walletStatus').classList.add('success');
+            
+            // Update user address display
             document.getElementById('userAddress').textContent = accounts[0];
             document.getElementById('walletInfo').classList.remove('hidden');
             
@@ -303,16 +373,19 @@ async function connectWallet() {
             localStorage.setItem('walletConnected', 'true');
             localStorage.setItem('lastConnectedAccount', accounts[0]);
             
+            // Initialize contracts after wallet connection
             await initializeContracts();
-            loadMarketplaceListings();
+            
+            // Now it's safe to load the marketplace data
+            setTimeout(() => {
+                openTab('browse');
+            }, 100);
         } else {
             alert('MetaMask is not installed. Please install it to use this dApp.');
         }
     } catch (error) {
         console.error("Error connecting to wallet:", error);
-        document.getElementById('walletStatus').textContent = 'Error connecting wallet: ' + error.message;
-        document.getElementById('walletStatus').classList.remove('hidden');
-        document.getElementById('walletStatus').classList.add('error');
+        alert('Error connecting wallet: ' + error.message);
     }
 }
 
@@ -321,10 +394,22 @@ setupWalletEventListeners();
 
 // Initialize contracts
 async function initializeContracts() {
-    marketplaceContract = new web3.eth.Contract(NFT_MARKETPLACE_ABI, NFT_MARKETPLACE_ADDRESS);
-    nftContract = new web3.eth.Contract(ERC721_ABI, NFT_ADDRESS); // Use SimpleNFT as the main NFT contract
-    tokenAContract = new web3.eth.Contract(ERC20_ABI, TOKEN_A_ADDRESS);
-    tokenBContract = new web3.eth.Contract(ERC20_ABI, TOKEN_B_ADDRESS);
+    try {
+        if (!web3) {
+            console.error('Web3 not initialized');
+            return false;
+        }
+        
+        marketplaceContract = new web3.eth.Contract(NFT_MARKETPLACE_ABI, NFT_MARKETPLACE_ADDRESS);
+        nftContract = new web3.eth.Contract(ERC721_ABI, NFT_ADDRESS); // Use SimpleNFT as the main NFT contract
+        tokenAContract = new web3.eth.Contract(ERC20_ABI, TOKEN_A_ADDRESS);
+        tokenBContract = new web3.eth.Contract(ERC20_ABI, TOKEN_B_ADDRESS);
+        
+        return true;
+    } catch (error) {
+        console.error('Error initializing contracts:', error);
+        return false;
+    }
 }
 
 // Load marketplace listings
@@ -333,10 +418,23 @@ async function loadMarketplaceListings() {
         const listingsContainer = document.getElementById('nftListings');
         listingsContainer.innerHTML = '<div class="loading">Loading NFTs...</div>';
         
+        // Check if contracts are initialized
+        if (!marketplaceContract) {
+            console.log('Contracts not initialized yet, attempting to initialize...');
+            try {
+                await initializeContracts();
+            } catch (initError) {
+                console.error('Failed to initialize contracts:', initError);
+                listingsContainer.innerHTML = '<div class="error">Failed to connect to blockchain. Please connect your wallet first.</div>';
+                return;
+            }
+        }
+        
+        // Now try to get listings
         const listings = await marketplaceContract.methods.getActiveListings().call();
         listingsContainer.innerHTML = '';
         
-        if (listings[0].length === 0) {
+        if (!listings || !listings[0] || listings[0].length === 0) {
             listingsContainer.innerHTML = '<p>No NFTs currently listed for sale.</p>';
             return;
         }
@@ -387,12 +485,11 @@ async function displayNFTInCard(cardElement, nftContractAddress, tokenId, listin
                     <small>Seller: ${listingInfo.seller.substring(0, 6)}...${listingInfo.seller.substring(38)}</small>
                 </div>
                 <div class="nft-actions">
-                    ${listingInfo.priceTokenA > 0 ? 
-                        `<button class="buy-token-a" onclick="buyNFTWithToken('${listingInfo.listingId}', 'A')">Buy with Token A</button>` : ''}
-                    ${listingInfo.priceTokenB > 0 ? 
-                        `<button class="buy-token-b" onclick="buyNFTWithToken('${listingInfo.listingId}', 'B')">Buy with Token B</button>` : ''}
+                    ${(listingInfo.priceTokenA > 0 || listingInfo.priceTokenB > 0) && listingInfo.seller.toLowerCase() !== (accounts[0] || '').toLowerCase() ? 
+                        `<button class="btn btn-primary" onclick="openBuyNFTModal('${listingInfo.listingId}')">Buy NFT</button>` : ''}
                     ${listingInfo.seller.toLowerCase() === (accounts[0] || '').toLowerCase() ? 
-                        `<button class="cancel-listing" onclick="cancelNFTListing('${listingInfo.listingId}')">Cancel Listing</button>` : ''}
+                        `<button class="btn btn-secondary" onclick="cancelNFTListing('${listingInfo.listingId}')">Cancel Listing</button>` : ''}
+                    <button class="btn btn-secondary" onclick="viewNFTDetails('${nftContractAddress}', '${tokenId}')">View Details</button>
                 </div>
             </div>
         `;
@@ -402,16 +499,167 @@ async function displayNFTInCard(cardElement, nftContractAddress, tokenId, listin
     }
 }
 
-// Buy NFT with token
-async function buyNFTWithToken(listingId, tokenType) {
+// View NFT details
+async function viewNFTDetails(nftContractAddress, tokenId) {
+    try {
+        // Close any open modals first
+        closeAllModals();
+        
+        const modal = document.getElementById('nftDetailModal');
+        const contentDiv = document.getElementById('nftDetailContent');
+        
+        // Show loading state
+        contentDiv.innerHTML = '<p>Loading NFT details...</p>';
+        modal.style.display = 'flex';
+        
+        // Get NFT metadata
+        const tokenURI = await nftContract.methods.tokenURI(tokenId).call();
+        const jsonString = tokenURI.substring('data:application/json;utf8,'.length);
+        const metadata = JSON.parse(jsonString);
+        
+        // Get owner
+        const owner = await nftContract.methods.ownerOf(tokenId).call();
+        
+        // Check if NFT is listed
+        let listingInfo = null;
+        const listings = await marketplaceContract.methods.getActiveListings().call();
+        for (let i = 0; i < listings[0].length; i++) {
+            if (listings[2][i].toLowerCase() === nftContractAddress.toLowerCase() && 
+                listings[3][i] === tokenId) {
+                listingInfo = {
+                    listingId: listings[0][i],
+                    seller: listings[1][i],
+                    priceTokenA: listings[4][i],
+                    priceTokenB: listings[5][i]
+                };
+                break;
+            }
+        }
+        
+        // Format HTML
+        contentDiv.innerHTML = `
+            <div style="text-align: center; margin-bottom: 20px;">
+                <img src="${metadata.image}" alt="${metadata.name}" style="max-width: 300px; border-radius: 12px;">
+            </div>
+            <div style="margin-bottom: 20px;">
+                <h3>${metadata.name}</h3>
+                <p>${metadata.description}</p>
+            </div>
+            <div style="margin-bottom: 20px;">
+                <h4>Properties</h4>
+                <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px;">
+                    ${metadata.attributes ? metadata.attributes.map(attr => 
+                        `<div style="background-color: var(--card-background); padding: 10px; border-radius: 8px; text-align: center;">
+                            <div style="font-size: 12px; color: var(--secondary-text-color);">${attr.trait_type}</div>
+                            <div style="font-weight: bold;">${attr.value}</div>
+                        </div>`
+                    ).join('') : 'No properties'}
+                </div>
+            </div>
+            <div>
+                <h4>Details</h4>
+                <p><strong>Token ID:</strong> ${tokenId}</p>
+                <p><strong>Contract:</strong> ${nftContractAddress}</p>
+                <p><strong>Owner:</strong> ${owner === NFT_MARKETPLACE_ADDRESS ? 'Listed on Marketplace' : owner}</p>
+                ${listingInfo ? `
+                    <p><strong>Listed By:</strong> ${listingInfo.seller}</p>
+                    <p><strong>Price in Token A:</strong> ${listingInfo.priceTokenA > 0 ? web3.utils.fromWei(listingInfo.priceTokenA, 'ether') : 'Not for sale'}</p>
+                    <p><strong>Price in Token B:</strong> ${listingInfo.priceTokenB > 0 ? web3.utils.fromWei(listingInfo.priceTokenB, 'ether') : 'Not for sale'}</p>
+                ` : ''}
+            </div>
+        `;
+        
+    } catch (error) {
+        console.error("Error loading NFT details:", error);
+        document.getElementById('nftDetailContent').innerHTML = `<div class="error">Error loading NFT details: ${error.message}</div>`;
+    }
+}
+
+// Open buy NFT modal
+function openBuyNFTModal(listingId) {
+    // Close any open modals first
+    closeAllModals();
+    
+    const modal = document.getElementById('buyNFTModal');
+    modal.dataset.listingId = listingId;
+    modal.style.display = 'flex';
+    
+    // Set up the modal content
+    loadBuyNFTModalContent(listingId);
+    
+    // Set up button handlers
+    document.getElementById('cancelBuyBtn').onclick = closeAllModals;
+    document.getElementById('confirmBuyBtn').onclick = buyNFTWithSelectedToken;
+}
+
+// Load the buy NFT modal content
+async function loadBuyNFTModalContent(listingId) {
+    try {
+        // Get the listing details
+        const listing = await marketplaceContract.methods.listings(listingId).call();
+        
+        // Get NFT details
+        const tokenURI = await nftContract.methods.tokenURI(listing.tokenId).call();
+        const metadata = await fetchNFTMetadata(tokenURI);
+        
+        // Format prices
+        const priceTokenA = web3.utils.fromWei(listing.priceTokenA, 'ether');
+        const priceTokenB = web3.utils.fromWei(listing.priceTokenB, 'ether');
+        
+        // Update the modal content
+        const buyNFTInfo = document.getElementById('buyNFTInfo');
+        buyNFTInfo.innerHTML = `
+            <div style="text-align: center; margin-bottom: 16px;">
+                <img src="${metadata.image}" alt="NFT Image" style="max-width: 200px; border-radius: 12px;">
+                <h3>${metadata.name}</h3>
+            </div>
+            <div style="margin-bottom: 16px;">
+                <p><strong>Token ID:</strong> ${listing.tokenId}</p>
+                <p><strong>Seller:</strong> ${listing.seller}</p>
+                <p><strong>Price in Token A:</strong> ${priceTokenA === '0' ? 'Not for sale' : priceTokenA}</p>
+                <p><strong>Price in Token B:</strong> ${priceTokenB === '0' ? 'Not for sale' : priceTokenB}</p>
+            </div>
+        `;
+        
+        // Enable/disable radio buttons based on available prices
+        const payWithTokenA = document.getElementById('payWithTokenA');
+        const payWithTokenB = document.getElementById('payWithTokenB');
+        
+        payWithTokenA.disabled = listing.priceTokenA === '0';
+        payWithTokenB.disabled = listing.priceTokenB === '0';
+        
+        // Select the first available option
+        if (listing.priceTokenA !== '0') {
+            payWithTokenA.checked = true;
+        } else if (listing.priceTokenB !== '0') {
+            payWithTokenB.checked = true;
+        }
+        
+    } catch (error) {
+        console.error("Error loading NFT details for purchase:", error);
+        document.getElementById('buyNFTInfo').innerHTML = `<div class="error">Error loading NFT details: ${error.message}</div>`;
+    }
+}
+
+// Buy NFT with selected token
+async function buyNFTWithSelectedToken() {
     try {
         if (!accounts || accounts.length === 0) {
             alert('Please connect your wallet first');
             return;
         }
         
-        // First get the listing details to know the exact price - access the mapping as a method
-        // When accessing a public mapping in Web3.js, we call it as a function with the key as parameter
+        const modal = document.getElementById('buyNFTModal');
+        const listingId = modal.dataset.listingId;
+        const tokenType = document.getElementById('payWithTokenA').checked ? 'A' : 'B';
+        
+        // Show status message
+        const buyStatus = document.getElementById('buyStatus');
+        buyStatus.textContent = 'Checking listing details...';
+        buyStatus.classList.remove('hidden');
+        buyStatus.classList.add('warning');
+        
+        // Get listing details
         const listing = await marketplaceContract.methods.listings(listingId).call();
         
         // Get the price based on which token the user wants to use
@@ -419,7 +667,9 @@ async function buyNFTWithToken(listingId, tokenType) {
         
         // Check if the price is valid
         if (price === '0') {
-            alert(`This NFT is not for sale with Token ${tokenType}`);
+            buyStatus.textContent = `This NFT is not for sale with Token ${tokenType}`;
+            buyStatus.classList.remove('warning');
+            buyStatus.classList.add('error');
             return;
         }
         
@@ -427,6 +677,7 @@ async function buyNFTWithToken(listingId, tokenType) {
         const tokenContract = tokenType === 'A' ? tokenAContract : tokenBContract;
         
         // Check if user has enough balance
+        buyStatus.textContent = 'Checking your token balance...';
         const balance = await tokenContract.methods.balanceOf(accounts[0]).call();
         
         // Use BN.js for safer comparison of large numbers
@@ -434,37 +685,50 @@ async function buyNFTWithToken(listingId, tokenType) {
             const balanceBN = web3.utils.toBN(balance);
             const priceBN = web3.utils.toBN(price);
             
-            console.log(`Token ${tokenType} Balance: ${balanceBN.toString()}, Required: ${priceBN.toString()}`);
-            
             if (balanceBN.lt(priceBN)) {
-                alert(`Insufficient Token ${tokenType} balance. You need ${web3.utils.fromWei(price, 'ether')} tokens.`);
+                buyStatus.textContent = `Insufficient Token ${tokenType} balance. You need ${web3.utils.fromWei(price, 'ether')} tokens.`;
+                buyStatus.classList.remove('warning');
+                buyStatus.classList.add('error');
                 return;
             }
         } catch (error) {
             console.error("Error comparing token balances:", error);
-            alert(`Error comparing token balances: ${error.message}`);
+            buyStatus.textContent = `Error comparing token balances: ${error.message}`;
+            buyStatus.classList.remove('warning');
+            buyStatus.classList.add('error');
             return;
         }
         
         // Approve the marketplace to spend the exact amount of tokens needed
-        // Convert to string to ensure large numbers are handled properly
+        buyStatus.textContent = `Approving Token ${tokenType} for purchase...`;
         const priceString = price.toString();
-        console.log(`Approving ${priceString} tokens for NFT purchase`);
         await tokenContract.methods.approve(NFT_MARKETPLACE_ADDRESS, priceString).send({ from: accounts[0] });
         
         // Execute the purchase based on which token is being used
+        buyStatus.textContent = `Buying NFT with Token ${tokenType}...`;
         if (tokenType === 'A') {
             await marketplaceContract.methods.buyNFTWithTokenA(listingId).send({ from: accounts[0] });
         } else {
             await marketplaceContract.methods.buyNFTWithTokenB(listingId).send({ from: accounts[0] });
         }
         
-        alert(`NFT purchased successfully with Token ${tokenType}!`);
-        loadMarketplaceListings(); // Refresh the listings
-        loadMyNFTs(); // Refresh user's NFTs
+        buyStatus.textContent = `NFT purchased successfully with Token ${tokenType}!`;
+        buyStatus.classList.remove('warning');
+        buyStatus.classList.add('success');
+        
+        // Refresh the listings after a short delay
+        setTimeout(() => {
+            modal.style.display = 'none';
+            loadMarketplaceListings();
+            loadMyNFTs();
+        }, 2000);
+        
     } catch (error) {
         console.error("Error buying NFT:", error);
-        alert(`Error buying NFT: ${error.message}`);
+        const buyStatus = document.getElementById('buyStatus');
+        buyStatus.textContent = `Error buying NFT: ${error.message}`;
+        buyStatus.classList.remove('warning');
+        buyStatus.classList.add('error');
     }
 }
 
@@ -488,12 +752,25 @@ async function cancelNFTListing(listingId) {
 
 // Load user's NFTs
 async function loadMyNFTs() {
-    if (!web3 || !accounts || accounts.length === 0) {
-        console.log("Wallet not connected");
+    if (!accounts || accounts.length === 0) {
+        const myNFTsContainer = document.getElementById('myNFTsList');
+        myNFTsContainer.innerHTML = '<div class="message">Please connect your wallet to view your NFTs</div>';
         return;
     }
     
-    const myNFTsContainer = document.getElementById('myNFTs');
+    // Check if contracts are initialized
+    if (!nftContract) {
+        try {
+            await initializeContracts();
+        } catch (error) {
+            console.error('Failed to initialize contracts:', error);
+            const myNFTsContainer = document.getElementById('myNFTsList');
+            myNFTsContainer.innerHTML = '<div class="error">Failed to connect to blockchain</div>';
+            return;
+        }
+    }
+    
+    const myNFTsContainer = document.getElementById('myNFTsList');
     myNFTsContainer.innerHTML = '<div class="loading">Loading your NFTs...</div>';
     
     try {
@@ -585,16 +862,28 @@ async function displayMyNFTInCard(cardElement, tokenId) {
 
 // Open listing modal
 function openListNFTModal(nftContractAddress, tokenId) {
-    document.getElementById('listingTokenId').value = tokenId;
-    document.getElementById('listingNFTContract').value = nftContractAddress;
-    document.getElementById('priceTokenA').value = '';
-    document.getElementById('priceTokenB').value = '';
-    document.getElementById('listNFTModal').style.display = 'flex';
+    // Close any open modals first
+    closeAllModals();
     
-    document.getElementById('cancelListingBtn').onclick = () => {
-        document.getElementById('listNFTModal').style.display = 'none';
-    };
+    // Store these values as data attributes since we removed the hidden inputs
+    const modal = document.getElementById('listNFTModal');
+    modal.dataset.tokenId = tokenId;
+    modal.dataset.nftContract = nftContractAddress;
     
+    // Clear previous values
+    document.getElementById('tokenAPrice').value = '';
+    document.getElementById('tokenBPrice').value = '';
+    
+    // Clear any previous status messages
+    const listingStatus = document.getElementById('listingStatus');
+    listingStatus.textContent = '';
+    listingStatus.classList.remove('hidden', 'warning', 'error', 'success');
+    listingStatus.classList.add('hidden');
+    
+    // Display the modal
+    modal.style.display = 'flex';
+    
+    document.getElementById('cancelListingBtn').onclick = closeAllModals;
     document.getElementById('confirmListingBtn').onclick = listNFTForSale;
 }
 
@@ -606,9 +895,11 @@ async function listNFTForSale() {
             return;
         }
         
-        const tokenId = document.getElementById('listingTokenId').value;
-        const priceTokenA = document.getElementById('priceTokenA').value;
-        const priceTokenB = document.getElementById('priceTokenB').value;
+        const modal = document.getElementById('listNFTModal');
+        const tokenId = modal.dataset.tokenId;
+        const nftContractAddress = modal.dataset.nftContract;
+        const priceTokenA = document.getElementById('tokenAPrice').value;
+        const priceTokenB = document.getElementById('tokenBPrice').value;
         
         if (!priceTokenA && !priceTokenB) {
             alert('Please enter a price in at least one token');
@@ -618,16 +909,26 @@ async function listNFTForSale() {
         const priceTokenAWei = priceTokenA ? web3.utils.toWei(priceTokenA, 'ether') : '0';
         const priceTokenBWei = priceTokenB ? web3.utils.toWei(priceTokenB, 'ether') : '0';
         
+        // Show status message
+        const listingStatus = document.getElementById('listingStatus');
+        listingStatus.textContent = 'Approving NFT transfer...';
+        listingStatus.classList.remove('hidden');
+        listingStatus.classList.add('warning');
+        
         await nftContract.methods.approve(NFT_MARKETPLACE_ADDRESS, tokenId).send({ from: accounts[0] });
         
+        listingStatus.textContent = 'Listing NFT for sale...';
+        
         await marketplaceContract.methods.listNFT(
-            NFT_ADDRESS,
+            nftContractAddress || NFT_ADDRESS,
             tokenId,
             priceTokenAWei,
             priceTokenBWei
         ).send({ from: accounts[0] });
         
-        alert('NFT listed successfully!');
+        listingStatus.textContent = 'NFT listed successfully!';
+        listingStatus.classList.remove('warning');
+        listingStatus.classList.add('success');
         document.getElementById('listNFTModal').style.display = 'none';
         loadMyNFTs();
         
@@ -648,6 +949,23 @@ async function loadMyListings() {
         const myListingsContainer = document.getElementById('myActiveListings');
         myListingsContainer.innerHTML = '<div class="loading">Loading your listings...</div>';
         
+        // Check if contracts are initialized
+        if (!marketplaceContract) {
+            console.log('Contracts not initialized yet, attempting to initialize...');
+            try {
+                const success = await initializeContracts();
+                if (!success) {
+                    myListingsContainer.innerHTML = '<div class="error">Failed to connect to blockchain. Please connect your wallet first.</div>';
+                    return;
+                }
+            } catch (initError) {
+                console.error('Failed to initialize contracts:', initError);
+                myListingsContainer.innerHTML = '<div class="error">Failed to connect to blockchain. Please connect your wallet first.</div>';
+                return;
+            }
+        }
+        
+        // Now try to get listings
         const listings = await marketplaceContract.methods.getActiveListings().call();
         myListingsContainer.innerHTML = '';
         

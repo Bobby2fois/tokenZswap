@@ -3,107 +3,67 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>NFT Marketplace - TokenSwap</title>
+    <title>NFT Marketplace - TokenZswap</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <style>
-        body {
-            font-family: Arial, sans-serif;
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 20px;
-            line-height: 1.6;
-        }
-        .container {
-            margin-bottom: 20px;
-            padding: 15px;
-            border: 1px solid #ddd;
-            border-radius: 5px;
-        }
-        h2 {
-            margin-top: 0;
-        }
-        button {
-            background-color: #4CAF50;
-            color: white;
-            padding: 10px 15px;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            margin: 5px 0;
-        }
-        button:hover {
-            background-color: #45a049;
-        }
-        button:disabled {
-            background-color: #cccccc;
-            cursor: not-allowed;
-            opacity: 0.5;
-        }
-        input {
-            padding: 8px;
-            margin: 5px 0;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            width: 100%;
-            box-sizing: border-box;
-        }
-        .hidden {
-            display: none;
-        }
-        .error {
-            color: red;
-            margin: 10px 0;
-        }
-        .warning {
-            color: #ff9900;
-            margin: 10px 0;
-        }
-        .success {
-            color: green;
-            margin: 10px 0;
-        }
-        .nav-buttons {
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: 20px;
-        }
+        /* NFT Marketplace specific styles */
         .nft-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
             gap: 20px;
+            margin-top: 20px;
+            width: 100%;
         }
         .nft-card {
-            border: 1px solid #ddd;
-            border-radius: 5px;
-            padding: 10px;
-            background-color: #f9f9f9;
+            background-color: var(--card-background);
+            border-radius: 16px;
+            padding: 16px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+            display: flex;
+            flex-direction: column;
+            height: 100%;
         }
         .nft-image {
             width: 100%;
-            height: auto;
-            border-radius: 5px;
-            margin-bottom: 10px;
+            height: 200px;
+            object-fit: contain;
+            border-radius: 12px;
+            margin-bottom: 12px;
+            background-color: #f5f5f5;
         }
         .nft-info {
-            margin-bottom: 10px;
+            flex: 1;
+            margin-bottom: 12px;
         }
         .nft-actions {
             display: flex;
             flex-direction: column;
-            gap: 5px;
+            gap: 8px;
+            margin-top: auto;
         }
         .tab-buttons {
             display: flex;
-            margin-bottom: 20px;
+            margin-bottom: 24px;
+            background-color: var(--background-color);
+            border-radius: 16px;
+            padding: 4px;
         }
         .tab-button {
-            padding: 10px 20px;
-            background-color: #f1f1f1;
+            padding: 12px 24px;
             border: none;
+            border-radius: 12px;
             cursor: pointer;
-            margin-right: 5px;
+            background: none;
+            color: var(--text-color);
+            font-weight: 600;
+            flex: 1;
+            text-align: center;
+            transition: all 0.2s;
         }
         .tab-button.active {
-            background-color: #4CAF50;
+            background-color: var(--secondary-color);
             color: white;
         }
         .tab-content {
@@ -125,118 +85,151 @@
             z-index: 1000;
         }
         .modal-content {
-            background-color: white;
-            padding: 20px;
-            border-radius: 5px;
+            background-color: var(--card-background);
+            padding: 24px;
+            border-radius: 24px;
             max-width: 500px;
             width: 90%;
-        }
-        .form-group {
-            margin-bottom: 15px;
-        }
-        .form-group label {
-            display: block;
-            margin-bottom: 5px;
-        }
-        .form-actions {
-            display: flex;
-            justify-content: space-between;
-            margin-top: 20px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
         }
         .loading {
             text-align: center;
-            color: #666;
+            color: var(--text-secondary);
             padding: 20px;
         }
     </style>
 </head>
 <body>
-    <div class="nav-buttons">
-        <h1>NFT Marketplace</h1>
-        <button id="goToAMM" onclick="window.location.href='index.html'">Go to AMM</button>
-    </div>
+    <div class="app-container marketplace-container">
+        <!-- Header with Navigation -->
+        <header class="header">
+            <a href="index.html" class="logo">TokenZswap</a>
+            <div class="nav-links">
+                <a href="index.html" class="nav-link">Swap</a>
+                <a href="liquidity.html" class="nav-link">Liquidity</a>
+                <a href="marketplace.html" class="nav-link active">NFT Marketplace</a>
+            </div>
+        </header>
 
-    <div id="walletInfo" class="container hidden">
-        <h3>Connected Wallet</h3>
-        <p>Address: <span id="userAddress"></span></p>
-    </div>
+        <!-- Connect Wallet Section -->
+        <div class="connect-wallet-container">
+            <button id="connectButton" class="connect-wallet">Connect Wallet</button>
+        </div>
+        <div id="walletInfo" class="hidden">
+            <p>Connected: <span id="userAddress"></span></p>
+        </div>
 
-    <div class="container">
-        <button id="connectButton">Connect Wallet</button>
-        <p id="walletStatus" class="hidden"></p>
-    </div>
+        <!-- Tab Navigation -->
+        <div class="tab-buttons">
+            <button id="browseBtn" class="tab-button active" onclick="openTab('browse')">Browse NFTs</button>
+            <button id="myNFTsBtn" class="tab-button" onclick="openTab('myNFTs')">My NFTs</button>
+            <button id="myListingsBtn" class="tab-button" onclick="openTab('myListings')">My Listings</button>
+        </div>
 
-    <div class="tab-buttons">
-        <button class="tab-button active" onclick="openTab('browseTab')">Browse NFTs</button>
-        <button class="tab-button" onclick="openTab('myNFTsTab')">My NFTs</button>
-        <button class="tab-button" onclick="openTab('myListingsTab')">My Listings</button>
-    </div>
-
-    <!-- Browse NFTs Tab -->
-    <div id="browseTab" class="tab-content active">
-        <div class="container">
-            <h2>Browse NFTs for Sale</h2>
-            <div id="nftListings" class="nft-grid">
-                <!-- NFT listings will be displayed here -->
-                <div class="loading">Loading NFTs...</div>
+        <!-- Browse NFTs Tab -->
+        <div id="browse" class="tab-content active">
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title">Browse NFTs for Sale</h2>
+                </div>
+                <div id="nftListings" class="nft-grid">
+                    <!-- NFT listings will be displayed here -->
+                    <div class="loading">Loading NFTs...</div>
+                </div>
             </div>
         </div>
-    </div>
 
-    <!-- My NFTs Tab -->
-    <div id="myNFTsTab" class="tab-content">
-        <div class="container">
-            <h2>My NFTs</h2>
-            <div id="myNFTs" class="nft-grid">
-                <!-- User's NFTs will be displayed here -->
+        <!-- My NFTs Tab -->
+        <div id="myNFTs" class="tab-content">
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title">My NFTs</h2>
+                </div>
+                <div id="myNFTsList" class="nft-grid">
+                    <!-- User's NFTs will be displayed here -->
+                </div>
             </div>
         </div>
-    </div>
 
-    <!-- My Listings Tab -->
-    <div id="myListingsTab" class="tab-content">
-        <div class="container">
-            <h2>My Active Listings</h2>
-            <div id="myActiveListings" class="nft-grid">
+        <!-- My Listings Tab -->
+        <div id="myListings" class="tab-content">
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title">My Active Listings</h2>
+                </div>
+                <div id="myActiveListings" class="nft-grid">
                 <!-- User's active listings will be displayed here -->
+                </div>
             </div>
         </div>
-    </div>
 
-    <!-- NFT Listing Form -->
-    <div id="listNFTModal" class="modal hidden" style="display: none;">
-        <div class="modal-content">
-            <h2>List NFT for Sale</h2>
-            <form id="listNFTForm">
-                <input type="hidden" id="listingNFTContract">
-                <input type="hidden" id="listingTokenId">
-                
+        <!-- List NFT Modal -->
+        <div id="listNFTModal" class="modal hidden">
+            <div class="modal-content">
+                <h2 class="card-title">List NFT for Sale</h2>
                 <div class="form-group">
-                    <label for="priceTokenA">Price in Token A:</label>
-                    <input type="number" id="priceTokenA" step="0.000001" min="0" placeholder="Price in Token A">
+                    <div class="input-label">
+                        <span>Price in Token A</span>
+                    </div>
+                    <div class="input-container">
+                        <div class="token-input">
+                            <input type="number" id="tokenAPrice" placeholder="0.0" min="0" step="0.000001">
+                        </div>
+                    </div>
                 </div>
-                
                 <div class="form-group">
-                    <label for="priceTokenB">Price in Token B:</label>
-                    <input type="number" id="priceTokenB" step="0.000001" min="0" placeholder="Price in Token B">
+                    <div class="input-label">
+                        <span>Price in Token B</span>
+                    </div>
+                    <div class="input-container">
+                        <div class="token-input">
+                            <input type="number" id="tokenBPrice" placeholder="0.0" min="0" step="0.000001">
+                        </div>
+                    </div>
                 </div>
-                
+                <div class="form-actions" style="display: flex; gap: 10px; margin-top: 20px;">
+                    <button id="cancelListingBtn" class="btn btn-secondary" style="background-color: var(--background-color); color: var(--text-color);">Cancel</button>
+                    <button id="confirmListingBtn" class="btn btn-primary" style="background-color: var(--primary-color); color: white;">List NFT</button>
+                </div>
                 <p id="listingStatus" class="hidden"></p>
-                
-                <div class="form-actions">
-                    <button type="button" id="cancelListingBtn">Cancel</button>
-                    <button type="button" id="confirmListingBtn">List NFT</button>
-                </div>
-            </form>
+            </div>
         </div>
-    </div>
 
-    <!-- NFT Detail Modal -->
-    <div id="nftDetailModal" class="modal hidden" style="display: none;">
-        <div class="modal-content">
-            <h2>NFT Details</h2>
-            <div id="nftDetailContent"></div>
-            <button id="closeDetailBtn">Close</button>
+        <!-- Buy NFT Modal -->
+        <div id="buyNFTModal" class="modal hidden">
+            <div class="modal-content">
+                <h2 class="card-title">Buy NFT</h2>
+                <div id="buyNFTInfo" class="form-group"></div>
+                <div class="form-group">
+                    <div class="input-label">
+                        <span>Select payment token</span>
+                    </div>
+                    <div class="input-container" style="display: flex; flex-direction: column; gap: 10px;">
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <input type="radio" id="payWithTokenA" name="paymentToken" value="tokenA" checked>
+                            <label for="payWithTokenA">Pay with Token A</label>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <input type="radio" id="payWithTokenB" name="paymentToken" value="tokenB">
+                            <label for="payWithTokenB">Pay with Token B</label>
+                        </div>
+                    </div>
+                </div>
+                <div class="form-actions" style="display: flex; gap: 10px; margin-top: 20px;">
+                    <button id="cancelBuyBtn" class="btn btn-secondary" style="background-color: var(--background-color); color: var(--text-color);">Cancel</button>
+                    <button id="confirmBuyBtn" class="btn btn-primary" style="background-color: var(--primary-color); color: white;">Buy NFT</button>
+                </div>
+                <p id="buyStatus" class="hidden"></p>
+            </div>
+        </div>
+
+        <!-- NFT Detail Modal -->
+        <div id="nftDetailModal" class="modal hidden">
+            <div class="modal-content">
+                <h2 class="card-title">NFT Details</h2>
+                <div id="nftDetailContent"></div>
+                <button id="closeDetailBtn" class="btn btn-secondary" style="margin-top: 20px; background-color: var(--background-color); color: var(--text-color);">Close</button>
+            </div>
         </div>
     </div>
 
