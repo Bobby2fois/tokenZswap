@@ -49,14 +49,19 @@ let reserveA = '0';
 let reserveB = '0';
 
 // Function to update Add Liquidity button state
-function updateAddLiquidityButtonState() {
-    const addLiquidityButton = document.getElementById('addLiquidity');
+function updateLiquidityActionButtonState() {
+    const liquidityActionButton = document.getElementById('liquidityActionButton');
+    
+    // Check if the button exists before trying to update it
+    if (!liquidityActionButton) {
+        console.warn('Liquidity action button not found in the DOM');
+        return;
+    }
+    
     if (tokenAApproved && tokenBApproved) {
-        addLiquidityButton.disabled = false;
-        addLiquidityButton.style.opacity = '1';
+        liquidityActionButton.textContent = 'Add Liquidity';
     } else {
-        addLiquidityButton.disabled = true;
-        addLiquidityButton.style.opacity = '0.5';
+        liquidityActionButton.textContent = 'Approve Tokens';
     }
 }
 
@@ -241,6 +246,15 @@ async function connectWallet() {
                 swapContainer.classList.remove('hidden');
                 liquidityContainer.classList.remove('hidden');
                 
+                // Set up liquidity action button event listener now that the container is visible
+                const liquidityActionButton = document.getElementById('liquidityActionButton');
+                if (liquidityActionButton) {
+                    liquidityActionButton.addEventListener('click', handleLiquidityAction);
+                    console.log('Liquidity action button event listener added');
+                } else {
+                    console.error('liquidityActionButton element not found after wallet connection');
+                }
+                
                 // Load initial data
                 updatePoolInfo();
             }
@@ -344,8 +358,11 @@ async function calculateEstimatedOutput() {
             
             document.getElementById('estimatedOutput').textContent = parseFloat(web3.utils.fromWei(amountOut, 'ether')).toFixed(6);
             
-            // Clear any previous error status
-            document.getElementById('swapStatus').classList.add('hidden');
+            // Only clear status if it's not showing the 10% pool reserve error
+            const statusElement = document.getElementById('swapStatus');
+            if (!statusElement.textContent.includes('Amount exceeds 10% of pool reserves')) {
+                statusElement.classList.add('hidden');
+            }
         } catch (calcError) {
             console.error("Error calculating amount out:", calcError);
             
@@ -483,7 +500,7 @@ async function approveTokenA() {
         
         // Set token A as approved and update button state
         tokenAApproved = true;
-        updateAddLiquidityButtonState();
+        updateLiquidityActionButtonState();
         
         document.getElementById('addLiquidityStatus').textContent = 'Token A approved!';
         document.getElementById('addLiquidityStatus').classList.add('success');
@@ -520,7 +537,7 @@ async function approveTokenB() {
         
         // Set token B as approved and update button state
         tokenBApproved = true;
-        updateAddLiquidityButtonState();
+        updateLiquidityActionButtonState();
         
         document.getElementById('addLiquidityStatus').textContent = 'Token B approved!';
         document.getElementById('addLiquidityStatus').classList.add('success');
@@ -557,7 +574,7 @@ async function addLiquidity() {
         // Reset approval status after successful liquidity addition
         tokenAApproved = false;
         tokenBApproved = false;
-        updateAddLiquidityButtonState();
+        updateLiquidityActionButtonState();
         
         // Update pool info
         updatePoolInfo();
@@ -603,6 +620,91 @@ async function removeLiquidity() {
         console.error("Error removing liquidity:", error);
         document.getElementById('removeLiquidityStatus').textContent = 'Error: ' + error.message;
         document.getElementById('removeLiquidityStatus').classList.add('error');
+    }
+}
+
+// Handle liquidity action (both approvals and adding liquidity)
+async function handleLiquidityAction() {
+    try {
+        const amountA = document.getElementById('addAmountA').value;
+        const amountB = document.getElementById('addAmountB').value;
+        
+        if (!amountA || parseFloat(amountA) <= 0 || !amountB || parseFloat(amountB) <= 0) {
+            alert("Please enter valid amounts for both tokens");
+            return;
+        }
+        
+        const amountAWei = web3.utils.toWei(amountA, 'ether');
+        const amountBWei = web3.utils.toWei(amountB, 'ether');
+        
+        // Check balances
+        if (web3.utils.toBN(amountAWei).gt(web3.utils.toBN(userTokenABalance))) {
+            alert(`Insufficient Token A balance. You have ${parseFloat(web3.utils.fromWei(userTokenABalance, 'ether')).toFixed(6)} tokens available.`);
+            return;
+        }
+        
+        if (web3.utils.toBN(amountBWei).gt(web3.utils.toBN(userTokenBBalance))) {
+            alert(`Insufficient Token B balance. You have ${parseFloat(web3.utils.fromWei(userTokenBBalance, 'ether')).toFixed(6)} tokens available.`);
+            return;
+        }
+        
+        const statusElement = document.getElementById('addLiquidityStatus');
+        statusElement.classList.remove('hidden');
+        statusElement.classList.remove('error', 'success');
+        
+        // If both tokens are already approved, add liquidity
+        if (tokenAApproved && tokenBApproved) {
+            statusElement.textContent = 'Adding liquidity...';
+            
+            await tokenSwapContract.methods.addLiquidity(amountAWei, amountBWei).send({ from: accounts[0] });
+            
+            statusElement.textContent = 'Liquidity added successfully!';
+            statusElement.classList.add('success');
+            
+            // Reset approval status after successful liquidity addition
+            tokenAApproved = false;
+            tokenBApproved = false;
+            updateLiquidityActionButtonState();
+            
+            // Update pool info
+            updatePoolInfo();
+        } else {
+            // Approve tokens
+            if (!tokenAApproved) {
+                statusElement.textContent = 'Approving Token A...';
+                
+                await tokenAContract.methods.approve(TOKEN_SWAP_ADDRESS, amountAWei).send({ from: accounts[0] });
+                
+                tokenAApproved = true;
+                statusElement.textContent = 'Token A approved!';
+                
+                // If Token B is still not approved, update button state and return
+                if (!tokenBApproved) {
+                    statusElement.textContent = 'Token A approved! Now approving Token B...';
+                    updateLiquidityActionButtonState();
+                    
+                    await tokenBContract.methods.approve(TOKEN_SWAP_ADDRESS, amountBWei).send({ from: accounts[0] });
+                    
+                    tokenBApproved = true;
+                    statusElement.textContent = 'Both tokens approved! Click again to add liquidity.';
+                    statusElement.classList.add('success');
+                    updateLiquidityActionButtonState();
+                }
+            } else if (!tokenBApproved) {
+                statusElement.textContent = 'Approving Token B...';
+                
+                await tokenBContract.methods.approve(TOKEN_SWAP_ADDRESS, amountBWei).send({ from: accounts[0] });
+                
+                tokenBApproved = true;
+                statusElement.textContent = 'Token B approved! Click again to add liquidity.';
+                statusElement.classList.add('success');
+                updateLiquidityActionButtonState();
+            }
+        }
+    } catch (error) {
+        console.error("Error in liquidity action:", error);
+        document.getElementById('addLiquidityStatus').textContent = 'Error: ' + error.message;
+        document.getElementById('addLiquidityStatus').classList.add('error');
     }
 }
 
@@ -699,41 +801,28 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('approveSwap').addEventListener('click', approveSwap);
     document.getElementById('executeSwap').addEventListener('click', executeSwap);
     
-    // Liquidity
-    document.getElementById('approveTokenA').addEventListener('click', approveTokenA);
-    document.getElementById('approveTokenB').addEventListener('click', approveTokenB);
-    document.getElementById('addLiquidity').addEventListener('click', addLiquidity);
+    // Add Liquidity - Single button approach
+    // Event listener is now added after wallet connection when the container is visible
     
     // Reset approval status and validate when input amounts change
     document.getElementById('addAmountA').addEventListener('input', () => {
         tokenAApproved = false;
-        updateAddLiquidityButtonState();
+        updateLiquidityActionButtonState();
         validateAddLiquidityAmounts();
     });
     document.getElementById('addAmountB').addEventListener('input', () => {
         tokenBApproved = false;
-        updateAddLiquidityButtonState();
+        updateLiquidityActionButtonState();
         validateAddLiquidityAmounts();
     });
     
     // Validate remove liquidity amount as user types
-    document.getElementById('removeAmount').addEventListener('input', () => { 
-        validateRemoveLiquidityAmount();
-
-        // Clear error message if input is empty
-        if (!document.getElementById('removeAmount').value) {
-            document.getElementById('removeLiquidityStatus').classList.add('hidden');
-            // Enable the remove liquidity button when input is cleared
-            const removeLiquidityButton = document.getElementById('removeLiquidity');
-            removeLiquidityButton.disabled = false;
-            removeLiquidityButton.style.opacity = '1';
-        }
-    });
-    
-    // Initialize buttons as disabled
-    updateAddLiquidityButtonState();
-    updateSwapButtonState();
+    document.getElementById('removeAmount').addEventListener('input', validateRemoveLiquidityAmount);
     document.getElementById('removeLiquidity').addEventListener('click', removeLiquidity);
+    
+    // Initialize buttons
+    updateLiquidityActionButtonState();
+    updateSwapButtonState();
     
     // Listen for account changes
     if (window.ethereum) {
