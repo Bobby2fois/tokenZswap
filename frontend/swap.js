@@ -1,5 +1,8 @@
 // TokenSwap AMM Swap JavaScript
 
+// Default slippage tolerance (1.0%)
+let slippageTolerance = 1.0;
+
 // Function to validate numeric input - only allow digits and decimal point
 function validateNumericInput(event) {
     // Allow: backspace, delete, tab, escape, enter
@@ -99,6 +102,12 @@ function validateSwapAmount() {
     const approveSwapButton = document.getElementById('approveSwap');
     const executeSwapButton = document.getElementById('executeSwap');
     const estimatedOutputElement = document.getElementById('estimatedOutput');
+    const slippageWarningElement = document.getElementById('slippageWarning');
+    
+    // Clear any existing slippage warnings
+    if (slippageWarningElement) {
+        slippageWarningElement.classList.add('hidden');
+    }
     
     if (!swapAmount || swapAmount.trim() === '') {
         // Input is empty, hide error message and clear estimated output
@@ -146,12 +155,14 @@ function validateSwapAmount() {
         return;
     }
     
-    // All validations passed
+    // Basic validations passed
     statusElement.classList.add('hidden');
-    approveSwapButton.disabled = false;
-    executeSwapButton.disabled = false;
     
-    // Calculate estimated output
+    // Initially enable buttons (may be disabled by calculateEstimatedOutput if price impact is too high)
+    approveSwapButton.disabled = false;
+    executeSwapButton.disabled = true;
+    
+    // Calculate estimated output - this will check price impact and may disable the approve button
     calculateEstimatedOutput();
 }
 
@@ -264,12 +275,18 @@ function updateSwapBalanceDisplay() {
 }
 
 // Calculate estimated output amount for swap
-function calculateEstimatedOutput() {
-    const swapAmount = document.getElementById('swapAmount').value;
+function calculateEstimatedOutput(swapAmount) {
+    // If swapAmount is not provided, get it from the input field
+    if (!swapAmount) {
+        swapAmount = document.getElementById('swapAmount').value;
+    }
+    
     const estimatedOutputElement = document.getElementById('estimatedOutput');
+    const slippageWarningElement = document.getElementById('slippageWarning');
     
     if (!swapAmount || parseFloat(swapAmount) <= 0 || !web3) {
         estimatedOutputElement.value = '0.0';
+        if (slippageWarningElement) slippageWarningElement.classList.add('hidden');
         return;
     }
     
@@ -294,6 +311,7 @@ function calculateEstimatedOutput() {
         // Check if reserves are valid
         if (reserveIn.isZero() || reserveOut.isZero()) {
             estimatedOutputElement.value = '0.0';
+            if (slippageWarningElement) slippageWarningElement.classList.add('hidden');
             return;
         }
         
@@ -307,10 +325,51 @@ function calculateEstimatedOutput() {
         // Apply 0.3% fee
         const amountOutWithFee = amountOut.mul(web3.utils.toBN('997')).div(web3.utils.toBN('1000'));
         
-        estimatedOutputElement.value = parseFloat(web3.utils.fromWei(amountOutWithFee, 'ether')).toFixed(6);
+        // Calculate minimum output based on slippage tolerance
+        const slippageMultiplier = Math.floor((100 - slippageTolerance) * 1000) / 1000;
+        const minAmountOut = amountOutWithFee.mul(web3.utils.toBN(Math.floor(slippageMultiplier * 1000))).div(web3.utils.toBN('1000'));
+        
+        // Check if the swap would exceed 10% of the pool reserves (existing protection)
+        const tenPercentOfReserve = reserveIn.div(web3.utils.toBN('10'));
+        const exceedsPoolLimit = amountIn.gt(tenPercentOfReserve);
+        
+        // Calculate price impact
+        const priceImpact = amountIn.mul(web3.utils.toBN('10000')).div(reserveIn).toNumber() / 100;
+        
+        // Display estimated output
+        const estimatedOutput = parseFloat(web3.utils.fromWei(amountOutWithFee, 'ether')).toFixed(6);
+        estimatedOutputElement.value = estimatedOutput;
+        
+        // We still calculate minAmountOut for the swap execution, but don't display it
+        // The minAmountOut value will be used when executing the swap
+        
+        // Show slippage warning if price impact is high and disable approve button
+        const approveButton = document.getElementById('approveSwap');
+        const highPriceImpact = priceImpact > slippageTolerance * 2 || exceedsPoolLimit;
+        
+        if (slippageWarningElement) {
+            if (highPriceImpact) {
+                slippageWarningElement.textContent = 'High price impact! Consider reducing swap amount or increasing slippage tolerance.';
+                slippageWarningElement.classList.remove('hidden');
+                
+                // Disable approve button
+                if (approveButton) {
+                    approveButton.disabled = true;
+                    approveButton.title = 'Price impact exceeds slippage tolerance';
+                }
+            } else {
+                slippageWarningElement.classList.add('hidden');
+                
+                // Re-enable approve button if other conditions are met
+                if (approveButton && !approveButton.disabled) {
+                    approveButton.removeAttribute('title');
+                }
+            }
+        }
     } catch (error) {
         console.error('Error calculating estimated output:', error);
         estimatedOutputElement.value = 'Error';
+        if (slippageWarningElement) slippageWarningElement.classList.add('hidden');
     }
 }
 
@@ -460,6 +519,86 @@ function setupWalletEventListeners() {
     }
 }
 
+// Slippage settings functions
+function toggleSettingsDropdown() {
+    console.log('toggleSettingsDropdown called');
+    const dropdown = document.getElementById('settingsDropdown');
+    console.log('Dropdown element:', dropdown);
+    if (dropdown) {
+        dropdown.classList.toggle('show');
+        console.log('Toggled show class, dropdown is now:', dropdown.classList.contains('show') ? 'visible' : 'hidden');
+    } else {
+        console.error('Dropdown element not found!');
+    }
+}
+
+function setSlippage(value) {
+    slippageTolerance = parseFloat(value);
+    
+    // Update UI to show active slippage option
+    const slippageOptions = document.querySelectorAll('.slippage-option');
+    slippageOptions.forEach(option => {
+        if (parseFloat(option.getAttribute('data-slippage')) === slippageTolerance) {
+            option.classList.add('active');
+        } else {
+            option.classList.remove('active');
+        }
+    });
+    
+    // Clear custom input if a preset is selected
+    document.getElementById('customSlippage').value = '';
+    
+    // If we have a swap amount entered, recalculate the estimated output
+    const swapAmount = document.getElementById('swapAmount').value;
+    if (swapAmount && parseFloat(swapAmount) > 0) {
+        calculateEstimatedOutput(swapAmount);
+    }
+}
+
+function setCustomSlippage(event) {
+    const customInput = event ? event.target : document.getElementById('customSlippage');
+    let value = parseFloat(customInput.value);
+    
+    // Enforce valid range: 0.1 to 100
+    if (isNaN(value) || value < 0.1) {
+        value = 0.1;
+        customInput.value = '0.1';
+    } else if (value > 100) {
+        value = 100;
+        customInput.value = '100';
+    }
+    
+    slippageTolerance = value;
+    
+    // Remove active class from preset options
+    const slippageOptions = document.querySelectorAll('.slippage-option');
+    slippageOptions.forEach(option => {
+        option.classList.remove('active');
+    });
+    
+    // If we have a swap amount entered, recalculate the estimated output
+    const swapAmount = document.getElementById('swapAmount').value;
+    if (swapAmount && parseFloat(swapAmount) > 0) {
+        calculateEstimatedOutput(swapAmount);
+    }
+}
+
+// Close dropdown when clicking outside
+document.addEventListener('click', function(event) {
+    const dropdown = document.getElementById('settingsDropdown');
+    const settingsIcon = document.querySelector('.settings-icon');
+    
+    // Only close the dropdown if:
+    // 1. The dropdown is open
+    // 2. The click is outside the dropdown
+    // 3. The click is not on the settings icon (which toggles the dropdown)
+    if (dropdown && dropdown.classList.contains('show') && 
+        !dropdown.contains(event.target) && 
+        !settingsIcon.contains(event.target)) {
+        dropdown.classList.remove('show');
+    }
+});
+
 // Event listeners
 document.addEventListener('DOMContentLoaded', async () => {
     // Load ABIs first
@@ -499,8 +638,51 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Approve and execute swap buttons
     document.getElementById('approveSwap').addEventListener('click', approveSwap);
     document.getElementById('executeSwap').addEventListener('click', executeSwap);
-    
+
     // Initialize buttons - make sure they're disabled by default
     document.getElementById('approveSwap').disabled = true;
     document.getElementById('executeSwap').disabled = true;
+
+
+    // Set up slippage settings event listeners
+    console.log('Looking for settings icon...');
+    const settingsIcon = document.querySelector('.settings-icon');
+    console.log('Settings icon found:', settingsIcon);
+    
+    if (settingsIcon) {
+        console.log('Adding click event listener to settings icon');
+        settingsIcon.addEventListener('click', function(event) {
+            console.log('Settings icon clicked!');
+            event.stopPropagation();
+            toggleSettingsDropdown();
+        });
+    } else {
+        console.error('Settings icon not found in the DOM!');
+    }
+
+    // Set up slippage option buttons
+    const slippageOptions = document.querySelectorAll('.slippage-option');
+    slippageOptions.forEach(option => {
+        option.addEventListener('click', function(event) {
+            // Prevent the click from bubbling up to document
+            event.stopPropagation();
+            const value = this.getAttribute('data-slippage');
+            setSlippage(value);
+        });
+    });
+
+    // Set up custom slippage input
+    const customSlippage = document.getElementById('customSlippage');
+    if (customSlippage) {
+        customSlippage.addEventListener('input', function(event) {
+            // Prevent the input from bubbling up to document
+            event.stopPropagation();
+            setCustomSlippage(event);
+        });
+        
+        // Also prevent clicks on the input from closing the dropdown
+        customSlippage.addEventListener('click', function(event) {
+            event.stopPropagation();
+        });
+    }
 });

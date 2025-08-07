@@ -497,11 +497,15 @@ async function displayNFTInCard(cardElement, nftContractAddress, tokenId, listin
             <div class="nft-info">
                 <h3>${metadata.name}</h3>
                 <p class="nft-description">${metadata.description.substring(0, 50)}${metadata.description.length > 50 ? '...' : ''}</p>
-                <div class="nft-price">
-                    ${listingInfo.priceTokenA > 0 ? `<div>Price: ${web3.utils.fromWei(listingInfo.priceTokenA, 'ether')} Token A</div>` : ''}
-                    ${listingInfo.priceTokenB > 0 ? `<div>Price: ${web3.utils.fromWei(listingInfo.priceTokenB, 'ether')} Token B</div>` : ''}
-                </div>
-                <div class="nft-seller">
+                    <div class="nft-price">
+                        <div class="${listingInfo.priceTokenA > 0 ? 'price-available' : 'price-unavailable'}">
+                            ${listingInfo.priceTokenA > 0 ? `Price: ${web3.utils.fromWei(listingInfo.priceTokenA, 'ether')} Token A` : '—'}
+                        </div>
+                        <div class="${listingInfo.priceTokenB > 0 ? 'price-available' : 'price-unavailable'}">
+                            ${listingInfo.priceTokenB > 0 ? `Price: ${web3.utils.fromWei(listingInfo.priceTokenB, 'ether')} Token B` : '—'}
+                        </div>
+                    </div>
+                    <div class="nft-seller">
                     <small>Seller: ${listingInfo.seller.substring(0, 6)}...${listingInfo.seller.substring(38)}</small>
                 </div>
                 <div class="nft-actions">
