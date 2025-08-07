@@ -97,6 +97,65 @@
             color: var(--text-secondary);
             padding: 20px;
         }
+        .nft-card.selectable {
+            cursor: pointer;
+            transition: all 0.2s ease;
+            position: relative;
+        }
+        .nft-card.selected {
+            outline: 3px solid var(--secondary-color);
+            box-shadow: 0 0 10px rgba(0, 123, 255, 0.3);
+        }
+        .nft-card.selected::before {
+            content: '✓';
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background-color: var(--secondary-color);
+            color: white;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+        }
+        .selected-nfts-container {
+            max-height: 400px;
+            overflow-y: auto;
+            margin-bottom: 20px;
+        }
+        .selected-nft-row {
+            display: flex;
+            align-items: center;
+            margin-bottom: 15px;
+            padding: 10px;
+            background-color: var(--background-color);
+            border-radius: 10px;
+        }
+        .selected-nft-image {
+            width: 60px;
+            height: 60px;
+            border-radius: 8px;
+            margin-right: 15px;
+        }
+        .selected-nft-info {
+            flex: 1;
+        }
+        .selected-nft-prices {
+            display: flex;
+            gap: 10px;
+            margin-left: 10px;
+        }
+        .selected-nft-prices input {
+            width: 100px;
+            padding: 8px;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+            background-color: var(--input-background);
+            color: var(--text-color);
+        }
     </style>
 </head>
 <body>
@@ -114,9 +173,6 @@
         <!-- Connect Wallet Section -->
         <div class="connect-wallet-container">
             <button id="connectButton" class="connect-wallet">Connect Wallet</button>
-        </div>
-        <div id="walletInfo" class="hidden">
-            <p>Connected: <span id="userAddress"></span></p>
         </div>
 
         <!-- Tab Navigation -->
@@ -142,8 +198,9 @@
         <!-- My NFTs Tab -->
         <div id="myNFTs" class="tab-content">
             <div class="card">
-                <div class="card-header">
+                <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
                     <h2 class="card-title">My NFTs</h2>
+                    <button id="batchListButton" class="btn btn-primary" style="display: none;">List Multiple NFTs</button>
                 </div>
                 <div id="myNFTsList" class="nft-grid">
                     <!-- User's NFTs will be displayed here -->
@@ -192,6 +249,21 @@
                     <button id="confirmListingBtn" class="btn btn-primary" style="background-color: var(--secondary-color); color: white;">List NFT</button>
                 </div>
                 <p id="listingStatus" class="hidden" style="margin-top: 15px;"></p>
+            </div>
+        </div>
+
+        <!-- Batch List NFTs Modal -->
+        <div id="batchListModal" class="modal hidden">
+            <div class="modal-content" style="max-width: 700px; width: 90%;">
+                <h2 class="card-title">List Multiple NFTs for Sale</h2>
+                <div id="selectedNFTsContainer" class="selected-nfts-container">
+                    <!-- Selected NFTs will be displayed here -->
+                </div>
+                <div class="form-actions" style="display: flex; gap: 10px; margin-top: 20px;">
+                    <button id="cancelBatchListingBtn" class="btn btn-secondary" style="background-color: var(--background-color); color: var(--text-color);">Cancel</button>
+                    <button id="confirmBatchListingBtn" class="btn btn-primary" style="background-color: var(--secondary-color); color: white;">List NFTs</button>
+                </div>
+                <p id="batchListingStatus" class="hidden" style="margin-top: 15px;"></p>
             </div>
         </div>
 

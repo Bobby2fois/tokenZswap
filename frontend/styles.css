@@ -99,14 +99,40 @@ body {
 }
 
 .connect-wallet {
-    background-color: var(--secondary-color);
+    background-color: var(--primary-color);
     color: white;
-    padding: 10px 16px;
     border: none;
-    border-radius: 16px;
-    cursor: pointer;
+    border-radius: 12px;
+    padding: 8px 16px;
     font-weight: 600;
+    cursor: pointer;
     transition: background-color 0.2s;
+}
+
+.wallet-connected {
+    background-color: #2563eb;
+    cursor: pointer;
+    position: relative;
+}
+
+.wallet-connected:hover {
+    background-color: #1d4ed8;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.wallet-connected:hover::after {
+    content: 'Click to copy address';
+    position: absolute;
+    bottom: -30px;
+    left: 50%;
+    transform: translateX(-50%);
+    background-color: rgba(0, 0, 0, 0.7);
+    color: white;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    white-space: nowrap;
+    z-index: 1000;
 }
 
 .connect-wallet:hover {
@@ -510,6 +536,19 @@ body {
     color: #94A3B8;
     font-style: italic;
     opacity: 0.6;
+}
+
+/* Batch listing button style */
+#batchListButton {
+    padding: 6px 12px;
+    font-size: 1.2rem;
+    height: auto;
+    min-width: auto;
+    width: auto;
+    max-width: 300px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 /* Output details styles */

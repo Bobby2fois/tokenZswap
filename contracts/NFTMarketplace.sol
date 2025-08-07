@@ -78,6 +78,47 @@ contract NFTMarketplace is ReentrancyGuard, Ownable {
     }
     
     /**
+     * @dev List multiple NFTs for sale in a single transaction
+     * @param nftContracts Array of NFT contract addresses
+     * @param tokenIds Array of NFT token IDs
+     * @param pricesTokenA Array of prices in Token A (0 if not accepting Token A)
+     * @param pricesTokenB Array of prices in Token B (0 if not accepting Token B)
+     */
+    function batchListNFTs(
+        address[] calldata nftContracts,
+        uint256[] calldata tokenIds,
+        uint256[] calldata pricesTokenA,
+        uint256[] calldata pricesTokenB
+    ) external nonReentrant {
+        uint256 length = nftContracts.length;
+        require(length > 0, "Must list at least one NFT");
+        require(length == tokenIds.length, "Array length mismatch");
+        require(length == pricesTokenA.length, "Array length mismatch");
+        require(length == pricesTokenB.length, "Array length mismatch");
+        
+        for (uint256 i = 0; i < length; i++) {
+            require(pricesTokenA[i] > 0 || pricesTokenB[i] > 0, "Price must be greater than 0 for at least one token");
+            require(nftContracts[i] != address(0), "NFT contract address cannot be zero");
+            
+            // Transfer NFT from seller to contract
+            IERC721(nftContracts[i]).transferFrom(msg.sender, address(this), tokenIds[i]);
+            
+            // Create listing
+            listings[nextListingId] = Listing({
+                seller: msg.sender,
+                nftContract: nftContracts[i],
+                tokenId: tokenIds[i],
+                priceTokenA: pricesTokenA[i],
+                priceTokenB: pricesTokenB[i],
+                active: true
+            });
+            
+            emit NFTListed(nextListingId, msg.sender, nftContracts[i], tokenIds[i], pricesTokenA[i], pricesTokenB[i]);
+            nextListingId++;
+        }
+    }
+    
+    /**
      * @dev Buy an NFT with Token A
      * @param listingId ID of the listing to purchase
      */

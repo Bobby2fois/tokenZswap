@@ -1,7 +1,7 @@
 // NFT Marketplace JavaScript
 
 // Contract addresses - update these with your deployed contract addresses
-const NFT_MARKETPLACE_ADDRESS = "0xcd0EE829D148759608d794952Be6b39fB0E10F88";
+const NFT_MARKETPLACE_ADDRESS = "0xb62A5F2F9dFE840737b85FD4a21797F4B40691c0";
 const TOKEN_A_ADDRESS = "0x20dE2Eb1aE8525F3ad0599faA2Bc46497c5B7249";
 const TOKEN_B_ADDRESS = "0x2261d1Ba09a0e62887dcFf7C625098fdbE69fC5e";
 const NFT_ADDRESS = "0x28f89DF716488c5b2d79b7001bBa57De59D6c864";
@@ -47,6 +47,15 @@ const NFT_MARKETPLACE_ABI = [
         "name": "listNFT", "outputs": [], "stateMutability": "nonpayable", "type": "function"
     },
     {
+        "inputs": [
+            {"internalType": "address[]", "name": "nftContracts", "type": "address[]"},
+            {"internalType": "uint256[]", "name": "tokenIds", "type": "uint256[]"},
+            {"internalType": "uint256[]", "name": "pricesTokenA", "type": "uint256[]"},
+            {"internalType": "uint256[]", "name": "pricesTokenB", "type": "uint256[]"}
+        ],
+        "name": "batchListNFTs", "outputs": [], "stateMutability": "nonpayable", "type": "function"
+    },
+    {
         "inputs": [{"internalType": "uint256", "name": "", "type": "uint256"}],
         "name": "listings",
         "outputs": [
@@ -85,6 +94,10 @@ let nftContract;
 let tokenAContract;
 let tokenBContract;
 
+// Variables for multi-NFT selection
+let selectedNFTs = [];
+let selectionMode = false;
+
 // Initialize when DOM loads
 document.addEventListener('DOMContentLoaded', async function() {
     document.getElementById('connectButton').addEventListener('click', connectWallet);
@@ -103,6 +116,22 @@ document.addEventListener('DOMContentLoaded', async function() {
     const cancelBuyBtn = document.getElementById('cancelBuyBtn');
     if (cancelBuyBtn) {
         cancelBuyBtn.addEventListener('click', closeAllModals);
+    }
+    
+    // Set up batch listing functionality
+    const batchListButton = document.getElementById('batchListButton');
+    if (batchListButton) {
+        batchListButton.addEventListener('click', openBatchListModal);
+    }
+    
+    const cancelBatchListingBtn = document.getElementById('cancelBatchListingBtn');
+    if (cancelBatchListingBtn) {
+        cancelBatchListingBtn.addEventListener('click', closeBatchListModal);
+    }
+    
+    const confirmBatchListingBtn = document.getElementById('confirmBatchListingBtn');
+    if (confirmBatchListingBtn) {
+        confirmBatchListingBtn.addEventListener('click', batchListNFTsForSale);
     }
     
     // Make sure only one tab is visible on page load
@@ -204,10 +233,19 @@ function openTab(tabName) {
     try {
         // Load content based on which tab is selected
         if (tabName === 'browse') {
+            // Reset selection mode when switching to browse tab
+            exitSelectionMode();
             loadMarketplaceListings();
         } else if (tabName === 'myNFTs') {
+            // Show batch listing button only in My NFTs tab
+            const batchListButton = document.getElementById('batchListButton');
+            if (batchListButton) {
+                batchListButton.style.display = 'block';
+            }
             loadMyNFTs();
         } else if (tabName === 'myListings') {
+            // Reset selection mode when switching to my listings tab
+            exitSelectionMode();
             loadMyListings();
         }
     } catch (error) {
@@ -302,8 +340,9 @@ function setupWalletEventListeners() {
             } else {
                 // Update the account and UI
                 accounts = newAccounts;
-                document.getElementById('connectButton').textContent = `Connected: ${accounts[0].substring(0, 6)}...${accounts[0].substring(38)}`;
-                document.getElementById('userAddress').textContent = accounts[0];
+                const connectButton = document.getElementById('connectButton');
+                connectButton.textContent = `Connected: ${accounts[0].substring(0, 6)}...${accounts[0].substring(38)}`;
+                connectButton.classList.add('wallet-connected');
                 localStorage.setItem('lastConnectedAccount', accounts[0]);
                 
                 // Reload data with new account
@@ -362,13 +401,26 @@ async function switchToBNBTestnet() {
 async function connectWallet() {
     try {
         if (await initWeb3()) {
-            document.getElementById('connectButton').textContent = `Connected: ${accounts[0].substring(0, 6)}...${accounts[0].substring(38)}`;
-            document.getElementById('connectButton').disabled = true;
+            const connectButton = document.getElementById('connectButton');
+            connectButton.textContent = `Connected: ${accounts[0].substring(0, 6)}...${accounts[0].substring(38)}`;
+            connectButton.classList.add('wallet-connected');
             
-            // Update user address display
-            document.getElementById('userAddress').textContent = accounts[0];
-            document.getElementById('walletInfo').classList.remove('hidden');
-            
+            // Change the click event to copy address when connected
+            connectButton.removeEventListener('click', connectWallet);
+            connectButton.addEventListener('click', () => {
+                navigator.clipboard.writeText(accounts[0])
+                    .then(() => {
+                        // Show temporary feedback
+                        const originalText = connectButton.textContent;
+                        connectButton.textContent = 'Address Copied!';
+                        setTimeout(() => {
+                            connectButton.textContent = originalText;
+                        }, 1500);
+                    })
+                    .catch(err => {
+                        console.error('Failed to copy address: ', err);
+                    });
+            });
             // Save connection state to localStorage
             localStorage.setItem('walletConnected', 'true');
             localStorage.setItem('lastConnectedAccount', accounts[0]);
@@ -932,6 +984,13 @@ async function displayMyNFTInCard(cardElement, tokenId) {
             // Continue even if this fails
         }
         
+        // Make the card selectable
+        cardElement.classList.add('selectable');
+        cardElement.dataset.tokenId = tokenId;
+        cardElement.dataset.nftContract = NFT_ADDRESS;
+        cardElement.dataset.imageUrl = imageUrl;
+        cardElement.dataset.name = metadata.name || `NFT #${tokenId}`;
+        
         // Display the NFT
         cardElement.innerHTML = `
             <div class="nft-image-container">
@@ -943,10 +1002,18 @@ async function displayMyNFTInCard(cardElement, tokenId) {
                 <p><strong>Token ID:</strong> ${tokenId}</p>
                 ${tokenType ? `<p><strong>Type:</strong> ${tokenType}</p>` : ''}
                 <div class="nft-actions">
-                    <button class="list-nft" onclick="openListNFTModal('${NFT_ADDRESS}', ${tokenId})">List for Sale</button>
+                    <button class="list-nft" onclick="event.stopPropagation(); openListNFTModal('${NFT_ADDRESS}', ${tokenId})">List for Sale</button>
                 </div>
             </div>
         `;
+        
+        // Add click event to toggle selection for the card
+        cardElement.addEventListener('click', function(event) {
+            // Don't toggle selection if clicking on the List for Sale button
+            if (!event.target.closest('.list-nft')) {
+                toggleNFTSelection(this, event);
+            }
+        });
     } catch (error) {
         console.error(`Error displaying NFT ${tokenId}:`, error);
         cardElement.innerHTML = `<div class="error">Error loading NFT #${tokenId}: ${error.message}</div>`;
@@ -1092,5 +1159,272 @@ async function loadMyListings() {
     } catch (error) {
         console.error("Error loading my listings:", error);
         document.getElementById('myActiveListings').innerHTML = `<div class="error">Error loading your listings: ${error.message}</div>`;
+    }
+}
+
+// Toggle NFT selection
+function toggleNFTSelection(cardElement, event) {
+    // Always enter selection mode when clicking on the card (except the button)
+    if (!selectionMode) {
+        enterSelectionMode();
+    }
+    
+    // Toggle selection
+    if (cardElement.classList.contains('selected')) {
+        // Remove from selection
+        cardElement.classList.remove('selected');
+        selectedNFTs = selectedNFTs.filter(nft => nft.tokenId !== cardElement.dataset.tokenId);
+    } else {
+        // Add to selection
+        cardElement.classList.add('selected');
+        selectedNFTs.push({
+            tokenId: cardElement.dataset.tokenId,
+            nftContract: cardElement.dataset.nftContract,
+            imageUrl: cardElement.dataset.imageUrl,
+            name: cardElement.dataset.name
+        });
+    }
+    
+    // Update batch listing button text
+    const batchListButton = document.getElementById('batchListButton');
+    if (batchListButton) {
+        if (selectedNFTs.length > 0) {
+            batchListButton.textContent = `List ${selectedNFTs.length} NFTs`;
+            batchListButton.style.display = 'block';
+        } else {
+            batchListButton.textContent = 'List Multiple NFTs';
+        }
+    }
+}
+
+// Enter selection mode
+function enterSelectionMode() {
+    selectionMode = true;
+    selectedNFTs = [];
+    
+    // Update all NFT cards to be selectable
+    const nftCards = document.querySelectorAll('#myNFTsList .nft-card');
+    nftCards.forEach(card => {
+        card.classList.add('selectable');
+    });
+    
+    // Update batch listing button
+    const batchListButton = document.getElementById('batchListButton');
+    if (batchListButton) {
+        batchListButton.textContent = 'List Multiple NFTs';
+    }
+}
+
+// Exit selection mode
+function exitSelectionMode() {
+    selectionMode = false;
+    selectedNFTs = [];
+    
+    // Remove selection from all cards
+    const nftCards = document.querySelectorAll('#myNFTsList .nft-card');
+    nftCards.forEach(card => {
+        card.classList.remove('selected');
+    });
+    
+    // Hide batch listing button
+    const batchListButton = document.getElementById('batchListButton');
+    if (batchListButton) {
+        batchListButton.style.display = 'none';
+        batchListButton.textContent = 'List Multiple NFTs';
+    }
+}
+
+// Open batch listing modal
+function openBatchListModal() {
+    if (selectedNFTs.length === 0) {
+        // If no NFTs are selected, enter selection mode
+        enterSelectionMode();
+        alert('Select NFTs by clicking on them, then click "List Multiple NFTs" again');
+        return;
+    }
+    
+    const modal = document.getElementById('batchListModal');
+    const container = document.getElementById('selectedNFTsContainer');
+    
+    // Clear previous content
+    container.innerHTML = '';
+    
+    // Add each selected NFT to the modal
+    selectedNFTs.forEach(nft => {
+        const nftRow = document.createElement('div');
+        nftRow.className = 'selected-nft-row';
+        nftRow.dataset.tokenId = nft.tokenId;
+        nftRow.dataset.nftContract = nft.nftContract;
+        
+        nftRow.innerHTML = `
+            <img src="${nft.imageUrl}" class="selected-nft-image" alt="${nft.name}">
+            <div class="selected-nft-info">
+                <h4>${nft.name}</h4>
+                <p>Token ID: ${nft.tokenId}</p>
+            </div>
+            <div class="selected-nft-prices">
+                <input type="number" class="token-a-price" placeholder="Price in A" min="0" step="0.000001">
+                <input type="number" class="token-b-price" placeholder="Price in B" min="0" step="0.000001">
+            </div>
+        `;
+        
+        container.appendChild(nftRow);
+    });
+    
+    // Show the modal
+    modal.classList.remove('hidden');
+    modal.style.display = 'flex';
+}
+
+// Close batch listing modal
+function closeBatchListModal() {
+    const modal = document.getElementById('batchListModal');
+    modal.style.display = 'none';
+    
+    // Clear status message
+    const statusElement = document.getElementById('batchListingStatus');
+    if (statusElement) {
+        statusElement.textContent = '';
+        statusElement.classList.add('hidden');
+    }
+}
+
+// Batch list NFTs for sale
+async function batchListNFTsForSale() {
+    try {
+        const accounts = await web3.eth.getAccounts();
+        const modalBody = document.getElementById('selectedNFTsContainer');
+        const statusContainer = document.getElementById('batchListingStatus');
+        statusContainer.innerHTML = '';
+        statusContainer.style.display = 'block';
+        statusContainer.classList.remove('hidden');
+        
+        // Validate inputs
+        let hasValidPrices = true;
+        const nftsToList = [];
+        
+        // Get all NFT rows from the modal
+        const nftRows = modalBody.querySelectorAll('.selected-nft-row');
+        
+        for (const row of nftRows) {
+            const tokenId = row.dataset.tokenId;
+            const nftContract = row.dataset.nftContract;
+            const tokenAInput = row.querySelector('.token-a-price');
+            const tokenBInput = row.querySelector('.token-b-price');
+            
+            const tokenAPrice = tokenAInput.value.trim() === '' ? '0' : tokenAInput.value.trim();
+            const tokenBPrice = tokenBInput.value.trim() === '' ? '0' : tokenBInput.value.trim();
+            
+            // Check if at least one price is set
+            if (tokenAPrice === '0' && tokenBPrice === '0') {
+                hasValidPrices = false;
+                const statusElement = document.createElement('div');
+                statusElement.className = 'error';
+                statusElement.textContent = `NFT #${tokenId}: Please set at least one price`;
+                statusContainer.appendChild(statusElement);
+            } else {
+                nftsToList.push({
+                    tokenId,
+                    nftContract,
+                    tokenAPrice,
+                    tokenBPrice
+                });
+            }
+        }
+        
+        if (!hasValidPrices || nftsToList.length === 0) {
+            // Show a user-friendly message if no valid prices were entered
+            if (nftsToList.length === 0) {
+                const errorMessage = document.createElement('div');
+                errorMessage.className = 'error';
+                errorMessage.textContent = 'Please enter at least one price (Token A or Token B) for each NFT';
+                statusContainer.appendChild(errorMessage);
+            }
+            return;
+        }
+        
+        // Prepare arrays for batch listing
+        const nftContracts = [];
+        const tokenIds = [];
+        const pricesTokenA = [];
+        const pricesTokenB = [];
+        
+        // Create status message for approval process
+        const approvalStatusElement = document.createElement('div');
+        approvalStatusElement.textContent = 'Approving NFTs for marketplace transfer...';
+        statusContainer.appendChild(approvalStatusElement);
+        
+        // First approve all NFTs
+        for (const nft of nftsToList) {
+            const { tokenId, nftContract, tokenAPrice, tokenBPrice } = nft;
+            
+            try {
+                // Create contract instance for this specific NFT contract
+                const nftContractInstance = new web3.eth.Contract(ERC721_ABI, nftContract);
+                
+                // Approve the NFT transfer
+                await nftContractInstance.methods.approve(NFT_MARKETPLACE_ADDRESS, tokenId).send({ from: accounts[0] });
+                
+                // Add to arrays for batch listing
+                nftContracts.push(nftContract);
+                tokenIds.push(tokenId);
+                pricesTokenA.push(web3.utils.toWei(tokenAPrice, 'ether'));
+                pricesTokenB.push(web3.utils.toWei(tokenBPrice, 'ether'));
+                
+            } catch (error) {
+                console.error(`Error approving NFT ${tokenId}:`, error);
+                const errorElement = document.createElement('div');
+                errorElement.className = 'error';
+                errorElement.textContent = `Error approving NFT #${tokenId}: ${error.message}`;
+                statusContainer.appendChild(errorElement);
+                return; // Stop if any approval fails
+            }
+        }
+        
+        // Update status for batch listing
+        approvalStatusElement.className = 'success';
+        approvalStatusElement.textContent = 'All NFTs approved successfully!';
+        
+        const listingStatusElement = document.createElement('div');
+        listingStatusElement.textContent = 'Listing all NFTs in a single transaction...';
+        statusContainer.appendChild(listingStatusElement);
+        
+        try {
+            // List all NFTs in a single transaction
+            await marketplaceContract.methods.batchListNFTs(
+                nftContracts,
+                tokenIds,
+                pricesTokenA,
+                pricesTokenB
+            ).send({ from: accounts[0] });
+            
+            listingStatusElement.className = 'success';
+            listingStatusElement.textContent = 'All NFTs listed successfully in a single transaction!';
+            
+            // Close the modal after a short delay
+            setTimeout(() => {
+                closeBatchListModal();
+                // Clear selection
+                exitSelectionMode();
+                // Refresh the UI after listing
+                loadMyNFTs();
+                loadMarketplaceListings();
+            }, 1500);
+            
+        } catch (error) {
+            console.error('Error in batch listing:', error);
+            listingStatusElement.className = 'error';
+            listingStatusElement.textContent = `Error listing NFTs: ${error.message}`;
+        }
+        
+    } catch (error) {
+        console.error('Error in batch listing:', error);
+        alert(`Error: ${error.message}`);
+        
+        // Refresh the UI after error
+        setTimeout(() => {
+            loadMyNFTs();
+            loadMyListings();
+        }, 2000);
     }
 }

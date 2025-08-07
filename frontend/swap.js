@@ -189,18 +189,30 @@ async function connectWallet() {
             tokenAContract = new web3.eth.Contract(ERC20_ABI, TOKEN_A_ADDRESS);
             tokenBContract = new web3.eth.Contract(ERC20_ABI, TOKEN_B_ADDRESS);
             
-            // Show wallet info
-            walletInfo.classList.remove('hidden');
-            userAddressSpan.textContent = accounts[0];
-            
             // Show main content with new layout
             mainContent.classList.remove('hidden');
             swapContainer.classList.remove('hidden');
             
             // Update connect button
             connectWalletBtn.textContent = `Connected: ${accounts[0].substring(0, 6)}...${accounts[0].substring(38)}`;
-            connectWalletBtn.disabled = true;
-            connectWalletBtn.classList.add('connected');
+            connectWalletBtn.classList.add('wallet-connected');
+            
+            // Change the click event to copy address when connected
+            connectWalletBtn.removeEventListener('click', connectWallet);
+            connectWalletBtn.addEventListener('click', () => {
+                navigator.clipboard.writeText(accounts[0])
+                    .then(() => {
+                        // Show temporary feedback
+                        const originalText = connectWalletBtn.textContent;
+                        connectWalletBtn.textContent = 'Address Copied!';
+                        setTimeout(() => {
+                            connectWalletBtn.textContent = originalText;
+                        }, 1500);
+                    })
+                    .catch(err => {
+                        console.error('Failed to copy address: ', err);
+                    });
+            });
             
             // Store connection status
             localStorage.setItem('walletConnected', 'true');
@@ -485,13 +497,27 @@ function setupWalletEventListeners() {
             } else {
                 // Update the account and UI
                 accounts = newAccounts;
-                userAddressSpan.textContent = accounts[0];
                 localStorage.setItem('lastConnectedAccount', accounts[0]);
                 
                 // Update connect button
                 connectWalletBtn.textContent = `Connected: ${accounts[0].substring(0, 6)}...${accounts[0].substring(38)}`;
-                connectWalletBtn.disabled = true;
-                connectWalletBtn.classList.add('connected');
+                connectWalletBtn.classList.add('wallet-connected');
+                
+                // Make sure the click event is updated
+                connectWalletBtn.removeEventListener('click', connectWallet);
+                connectWalletBtn.addEventListener('click', () => {
+                    navigator.clipboard.writeText(accounts[0])
+                        .then(() => {
+                            const originalText = connectWalletBtn.textContent;
+                            connectWalletBtn.textContent = 'Address Copied!';
+                            setTimeout(() => {
+                                connectWalletBtn.textContent = originalText;
+                            }, 1500);
+                        })
+                        .catch(err => {
+                            console.error('Failed to copy address: ', err);
+                        });
+                });
                 
                 // Reset approval status
                 swapApproved = false;
