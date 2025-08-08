@@ -29,7 +29,6 @@ A minimal Automated Market Maker (AMM) implementation on BNB Chain for the 42 sc
 - Node.js (v14+) and npm
 - MetaMask wallet installed in your browser
 - BNB testnet tokens for gas (get from [BNB Chain Faucet](https://www.bnbchain.org/en/testnet-faucet))
-- A code editor (VSCode recommended)
 - Basic knowledge of blockchain interactions
 
 ### Installation
