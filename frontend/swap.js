@@ -1,5 +1,10 @@
 // TokenSwap AMM Swap JavaScript
 
+// Contract addresses - update these after deployment
+const TOKEN_SWAP_ADDRESS = '0xB19fF8294BEb8ADD0e66E349990d1fa2FE9759Ff';
+const TOKEN_A_ADDRESS = '0x7aD4eB0A626eeFFedc0E383ABA4cD79E31233587';
+const TOKEN_B_ADDRESS = '0xC34521aD8c8e0028baB8C05f8980217B0B7C17F5';
+
 // Default slippage tolerance (1.0%)
 let slippageTolerance = 1.0;
 
@@ -32,10 +37,6 @@ function validateNumericInput(event) {
     }
 }
 
-// Contract addresses - update these after deployment
-const TOKEN_SWAP_ADDRESS = '0x3F3EE5C0aC30cCC0953f89ADf18D71D92828B5FB';
-const TOKEN_A_ADDRESS = '0x20dE2Eb1aE8525F3ad0599faA2Bc46497c5B7249';
-const TOKEN_B_ADDRESS = '0x2261d1Ba09a0e62887dcFf7C625098fdbE69fC5e';
 
 // ABIs - will be loaded from JSON files
 let TOKEN_SWAP_ABI;

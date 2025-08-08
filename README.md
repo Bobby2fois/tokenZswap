@@ -98,7 +98,14 @@ npx hardhat run scripts/deploy.js --network bscTestnet
 
 1. Update the contract addresses in the frontend configuration files:
 
-   Open `frontend/app.js` and update the following constants with your deployed contract addresses:
+   Open `frontend/swap.js` and update the following constants with your deployed contract addresses:
+   ```javascript
+   // Update these with your deployed contract addresses
+   const TOKEN_SWAP_ADDRESS = '0x...your_tokenswap_address...';
+   const TOKEN_A_ADDRESS = '0x...your_token_a_address...';
+   const TOKEN_B_ADDRESS = '0x...your_token_b_address...';
+   ```
+   Open `frontend/liquidity.js` and update the following constants:
    ```javascript
    // Update these with your deployed contract addresses
    const TOKEN_SWAP_ADDRESS = '0x...your_tokenswap_address...';
@@ -146,16 +153,16 @@ npx hardhat run scripts/deploy.js --network bscTestnet
 
 ## Usage Guide
 
+### Adding Liquidity
+1. Navigate to the "Liquidity" tab
+2. Enter the amounts of Token A and Token B you want to add
+3. Click "Add Liquidity" to provide liquidity and receive LP tokens
+
 ### Swapping Tokens
 1. Connect your wallet by clicking the "Connect Wallet" button
 2. Enter the amount of tokens you want to swap in the "From" field
 3. The "To" field will automatically calculate the expected output
 4. Click "Swap" to execute the transaction
-
-### Adding Liquidity
-1. Navigate to the "Liquidity" tab
-2. Enter the amounts of Token A and Token B you want to add
-3. Click "Add Liquidity" to provide liquidity and receive LP tokens
 
 ### Removing Liquidity
 1. Navigate to the "Liquidity" tab
