@@ -252,7 +252,6 @@ async function connectWallet() {
             const liquidityActionButton = document.getElementById('liquidityActionButton');
             if (liquidityActionButton) {
                 liquidityActionButton.addEventListener('click', handleLiquidityAction);
-                console.log('Liquidity action button event listener added');
             } else {
                 console.error('liquidityActionButton element not found after wallet connection');
             }

@@ -886,7 +886,6 @@ async function loadMyNFTs() {
 // Helper function to parse token URI and extract metadata
 async function parseTokenURI(tokenURI) {
     try {
-        console.log('Parsing token URI:', tokenURI);
         
         if (!tokenURI) {
             console.error('Empty tokenURI provided');
@@ -895,21 +894,15 @@ async function parseTokenURI(tokenURI) {
         
         // Handle base64 encoded JSON
         if (tokenURI.startsWith('data:application/json;base64,')) {
-            console.log('Found base64 encoded JSON metadata');
             const base64Data = tokenURI.replace('data:application/json;base64,', '');
             const jsonString = atob(base64Data);
-            console.log('Decoded JSON string:', jsonString.substring(0, 100) + '...');
             const metadata = JSON.parse(jsonString);
-            console.log('Parsed metadata object:', metadata);
             return metadata;
         } 
         // Handle utf8 encoded JSON (used by SimpleNFT contract)
         else if (tokenURI.startsWith('data:application/json;utf8,')) {
-            console.log('Found utf8 encoded JSON metadata');
             const jsonString = tokenURI.replace('data:application/json;utf8,', '');
-            console.log('Decoded JSON string:', jsonString.substring(0, 100) + '...');
             const metadata = JSON.parse(jsonString);
-            console.log('Parsed metadata object:', metadata);
             return metadata;
         }
         // Handle regular HTTP URLs
@@ -929,7 +922,6 @@ async function parseTokenURI(tokenURI) {
 async function fetchNFTMetadata(tokenURI) {
     try {
         const metadata = await parseTokenURI(tokenURI);
-        console.log('Parsed metadata:', metadata); // Debug log
         
         // Ensure we have valid metadata
         if (!metadata) {
@@ -940,7 +932,6 @@ async function fetchNFTMetadata(tokenURI) {
         // Handle base64 encoded images and other formats
         if (metadata.image) {
             // Image URL is already present, return as is
-            console.log('Image URL found:', metadata.image); // Debug log
             return metadata;
         } else {
             console.error('No image URL in metadata');

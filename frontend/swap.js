@@ -548,12 +548,9 @@ function setupWalletEventListeners() {
 
 // Slippage settings functions
 function toggleSettingsDropdown() {
-    console.log('toggleSettingsDropdown called');
     const dropdown = document.getElementById('settingsDropdown');
-    console.log('Dropdown element:', dropdown);
     if (dropdown) {
         dropdown.classList.toggle('show');
-        console.log('Toggled show class, dropdown is now:', dropdown.classList.contains('show') ? 'visible' : 'hidden');
     } else {
         console.error('Dropdown element not found!');
     }
@@ -672,14 +669,10 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 
     // Set up slippage settings event listeners
-    console.log('Looking for settings icon...');
     const settingsIcon = document.querySelector('.settings-icon');
-    console.log('Settings icon found:', settingsIcon);
     
     if (settingsIcon) {
-        console.log('Adding click event listener to settings icon');
         settingsIcon.addEventListener('click', function(event) {
-            console.log('Settings icon clicked!');
             event.stopPropagation();
             toggleSettingsDropdown();
         });
