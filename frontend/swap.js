@@ -89,6 +89,7 @@ function updateSwapButtonState() {
     if (swapApproved) {
         approveSwapButton.classList.add('hidden');
         executeSwapButton.classList.remove('hidden');
+        executeSwapButton.disabled = false; // Enable the execute button when approved
     } else {
         approveSwapButton.classList.remove('hidden');
         executeSwapButton.classList.add('hidden');
