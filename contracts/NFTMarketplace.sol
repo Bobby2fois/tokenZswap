@@ -27,7 +27,7 @@ contract NFTMarketplace is ReentrancyGuard, Ownable {
     // Counter for listing IDs
     uint256 public nextListingId;
     
-    // Token A and Token B addresses from your AMM
+    // Token A and Token B addresses
     address public tokenA;
     address public tokenB;
     

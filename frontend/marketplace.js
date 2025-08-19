@@ -1,6 +1,6 @@
 // NFT Marketplace JavaScript
 
-// Contract addresses - update these with your deployed contract addresses
+// Contract addresses - update these after deployment
 const NFT_MARKETPLACE_ADDRESS = "0xA9D752F6b27D27CA5FC166F3Ae166D8badAAc5D5";
 const TOKEN_A_ADDRESS = "0x7aD4eB0A626eeFFedc0E383ABA4cD79E31233587";
 const TOKEN_B_ADDRESS = "0xC34521aD8c8e0028baB8C05f8980217B0B7C17F5";
