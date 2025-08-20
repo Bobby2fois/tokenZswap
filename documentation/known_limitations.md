@@ -4,7 +4,7 @@
 
 ### TokenSwap AMM Limitations
 
-1. **No Fee Mechanism**
+1. **No Partial Fee Mechanism**
    - **Issue**: While the AMM implements a 0.3% trading fees, fees simply accumulate in the pool.
    - **Impact**: Liquidity providers can't claim their portion of fees without removing all their liquidity.
    - **Future Improvement**: Implement a fee distribution system that allows LP providers to claim their portion of fees only.
