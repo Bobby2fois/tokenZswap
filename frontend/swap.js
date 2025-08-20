@@ -1,9 +1,9 @@
 // TokenSwap AMM Swap JavaScript
 
 // Contract addresses - update these after deployment
-const TOKEN_SWAP_ADDRESS = '0xB19fF8294BEb8ADD0e66E349990d1fa2FE9759Ff';
-const TOKEN_A_ADDRESS = '0x7aD4eB0A626eeFFedc0E383ABA4cD79E31233587';
-const TOKEN_B_ADDRESS = '0xC34521aD8c8e0028baB8C05f8980217B0B7C17F5';
+const TOKEN_SWAP_ADDRESS = '0xd8152d9cB21C4b23C1C85004A199fDB30eBbE7d8';
+const TOKEN_A_ADDRESS = '0x4F66624d8bc9AE021af3c6aF695B0bB9a05B9D45';
+const TOKEN_B_ADDRESS = '0xf369a6e661ED544738A4ca74E7d703278485Bfc6';
 
 // Default slippage tolerance (1.0%)
 let slippageTolerance = 1.0;

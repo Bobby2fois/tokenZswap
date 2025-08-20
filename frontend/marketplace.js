@@ -1,10 +1,10 @@
 // NFT Marketplace JavaScript
 
 // Contract addresses - update these after deployment
-const NFT_MARKETPLACE_ADDRESS = "0xA9D752F6b27D27CA5FC166F3Ae166D8badAAc5D5";
-const TOKEN_A_ADDRESS = "0x7aD4eB0A626eeFFedc0E383ABA4cD79E31233587";
-const TOKEN_B_ADDRESS = "0xC34521aD8c8e0028baB8C05f8980217B0B7C17F5";
-const NFT_ADDRESS = "0x938E8530684820e5dbC2e8CF712390ff42704DE6";
+const NFT_MARKETPLACE_ADDRESS = "0xe8Eb9128D4C5411979afE183F93D634fd399B1e6";
+const TOKEN_A_ADDRESS = "0x4F66624d8bc9AE021af3c6aF695B0bB9a05B9D45";
+const TOKEN_B_ADDRESS = "0xf369a6e661ED544738A4ca74E7d703278485Bfc6";
+const NFT_ADDRESS = "0x02F67f418a788256E09f59D4db7dF648E79FC20B";
 
 // ABIs
 const NFT_MARKETPLACE_ABI = [
@@ -146,6 +146,9 @@ document.addEventListener('DOMContentLoaded', async function() {
         await connectWallet();
     }
     
+    // Make sure all modals are hidden on page load
+    closeAllModals();
+    
     // Initialize modal close buttons
     document.getElementById('closeDetailBtn').addEventListener('click', closeAllModals);
     document.getElementById('cancelListingBtn').addEventListener('click', closeAllModals);
@@ -174,6 +177,7 @@ function closeAllModals() {
     const modals = document.querySelectorAll('.modal');
     modals.forEach(modal => {
         modal.style.display = 'none';
+        modal.classList.add('hidden');
     });
     
     // Also clear any status messages
@@ -659,6 +663,7 @@ function openBuyNFTModal(listingId) {
     const modal = document.getElementById('buyNFTModal');
     modal.dataset.listingId = listingId;
     modal.style.display = 'flex';
+    modal.classList.remove('hidden');
     
     // Set up the modal content
     loadBuyNFTModalContent(listingId);
@@ -1033,6 +1038,7 @@ function openListNFTModal(nftContractAddress, tokenId) {
     
     // Display the modal
     modal.style.display = 'flex';
+    modal.classList.remove('hidden');
     
     document.getElementById('cancelListingBtn').onclick = closeAllModals;
     document.getElementById('confirmListingBtn').onclick = listNFTForSale;
@@ -1263,8 +1269,8 @@ function openBatchListModal() {
     });
     
     // Show the modal
-    modal.classList.remove('hidden');
     modal.style.display = 'flex';
+    modal.classList.remove('hidden');
 }
 
 // Close batch listing modal

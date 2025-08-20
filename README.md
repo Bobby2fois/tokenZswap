@@ -154,15 +154,15 @@ npx hardhat run scripts/deploy.js --network bscTestnet
 ## Usage Guide
 
 ### Adding Liquidity
-1. Navigate to the "Liquidity" tab
-2. Enter the amounts of Token A and Token B you want to add
-3. Click "Add Liquidity" to provide liquidity and receive LP tokens
+1. Connect your wallet by clicking the "Connect Wallet" button
+2. Navigate to the "Liquidity" tab
+3. Enter the amounts of Token A and Token B you want to add
+4. Click "Add Liquidity" to provide liquidity and receive LP tokens
 
 ### Swapping Tokens
-1. Connect your wallet by clicking the "Connect Wallet" button
-2. Enter the amount of tokens you want to swap in the "From" field
-3. The "To" field will automatically calculate the expected output
-4. Click "Swap" to execute the transaction
+1. Enter the amount of tokens you want to swap in the "From" field
+2. The "To" field will automatically calculate the expected output
+3. Click "Swap" to execute the transaction
 
 ### Removing Liquidity
 1. Navigate to the "Liquidity" tab

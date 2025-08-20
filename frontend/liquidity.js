@@ -1,9 +1,9 @@
 // TokenSwap AMM Liquidity Management JavaScript
 
 // Contract addresses - update these after deployment
-const TOKEN_SWAP_ADDRESS = '0xB19fF8294BEb8ADD0e66E349990d1fa2FE9759Ff';
-const TOKEN_A_ADDRESS = '0x7aD4eB0A626eeFFedc0E383ABA4cD79E31233587';
-const TOKEN_B_ADDRESS = '0xC34521aD8c8e0028baB8C05f8980217B0B7C17F5';
+const TOKEN_SWAP_ADDRESS = '0xd8152d9cB21C4b23C1C85004A199fDB30eBbE7d8';
+const TOKEN_A_ADDRESS = '0x4F66624d8bc9AE021af3c6aF695B0bB9a05B9D45';
+const TOKEN_B_ADDRESS = '0xf369a6e661ED544738A4ca74E7d703278485Bfc6';
 
 // Function to validate numeric input - only allow digits and decimal point
 function validateNumericInput(event) {
@@ -65,8 +65,8 @@ let tokenAContract;
 let tokenBContract;
 
 // Track token approval status
-let tokenAApproved = false;
-let tokenBApproved = false;
+let tokenAAllowance = '0';
+let tokenBAllowance = '0';
 
 // Store user balances
 let userTokenABalance = '0';
@@ -280,16 +280,23 @@ async function updatePoolInfo() {
         reserveA = reserves[0];
         reserveB = reserves[1];
         
-        // Get user balances
-        const [tokenABalance, tokenBBalance, lpBalance] = await Promise.all([
+        // Get user balances and allowances
+        const [tokenABalance, tokenBBalance, lpBalance, tokenAAllowanceResult, tokenBAllowanceResult] = await Promise.all([
             tokenAContract.methods.balanceOf(accounts[0]).call(),
             tokenBContract.methods.balanceOf(accounts[0]).call(),
-            tokenSwapContract.methods.balanceOf(accounts[0]).call()
+            tokenSwapContract.methods.balanceOf(accounts[0]).call(),
+            tokenAContract.methods.allowance(accounts[0], TOKEN_SWAP_ADDRESS).call(),
+            tokenBContract.methods.allowance(accounts[0], TOKEN_SWAP_ADDRESS).call()
         ]);
         
         userTokenABalance = tokenABalance;
         userTokenBBalance = tokenBBalance;
         userLPBalance = lpBalance;
+        tokenAAllowance = tokenAAllowanceResult;
+        tokenBAllowance = tokenBAllowanceResult;
+        
+        console.log('Token A allowance:', web3.utils.fromWei(tokenAAllowance, 'ether'));
+        console.log('Token B allowance:', web3.utils.fromWei(tokenBAllowance, 'ether'));
         
         // Update hidden elements for internal use
         document.getElementById('reserveA').textContent = parseFloat(web3.utils.fromWei(reserveA, 'ether')).toFixed(6);
@@ -397,8 +404,12 @@ async function handleLiquidityAction() {
         statusElement.classList.remove('hidden');
         statusElement.classList.remove('error', 'success');
         
-        // If both tokens are already approved, add liquidity
-        if (tokenAApproved && tokenBApproved) {
+        // Check if tokens have sufficient allowance for the requested amounts
+        const hasTokenAAllowance = web3.utils.toBN(tokenAAllowance).gte(web3.utils.toBN(amountAWei));
+        const hasTokenBAllowance = web3.utils.toBN(tokenBAllowance).gte(web3.utils.toBN(amountBWei));
+        
+        // If both tokens have sufficient allowance, add liquidity
+        if (hasTokenAAllowance && hasTokenBAllowance) {
             statusElement.textContent = 'Adding liquidity...';
             
             await tokenSwapContract.methods.addLiquidity(amountAWei, amountBWei).send({ from: accounts[0] });
@@ -406,41 +417,43 @@ async function handleLiquidityAction() {
             statusElement.textContent = 'Liquidity added successfully!';
             statusElement.classList.add('success');
             
-            // Reset approval status after successful liquidity addition
-            tokenAApproved = false;
-            tokenBApproved = false;
+            // Update allowances after successful liquidity addition
+            await updatePoolInfo();
             updateLiquidityActionButtonState();
             
             // Update pool info
             updatePoolInfo();
         } else {
             // Approve tokens
-            if (!tokenAApproved) {
+            if (!hasTokenAAllowance) {
                 statusElement.textContent = 'Approving Token A...';
                 
                 await tokenAContract.methods.approve(TOKEN_SWAP_ADDRESS, amountAWei).send({ from: accounts[0] });
                 
-                tokenAApproved = true;
+                // Update allowance after approval
+                tokenAAllowance = await tokenAContract.methods.allowance(accounts[0], TOKEN_SWAP_ADDRESS).call();
                 statusElement.textContent = 'Token A approved!';
                 
-                // If Token B is still not approved, update button state and return
-                if (!tokenBApproved) {
+                // If Token B still doesn't have sufficient allowance, update button state and return
+                if (!hasTokenBAllowance) {
                     statusElement.textContent = 'Token A approved! Now approving Token B...';
                     updateLiquidityActionButtonState();
                     
                     await tokenBContract.methods.approve(TOKEN_SWAP_ADDRESS, amountBWei).send({ from: accounts[0] });
                     
-                    tokenBApproved = true;
+                    // Update allowance after approval
+                    tokenBAllowance = await tokenBContract.methods.allowance(accounts[0], TOKEN_SWAP_ADDRESS).call();
                     statusElement.textContent = 'Both tokens approved! Click again to add liquidity.';
                     statusElement.classList.add('success');
                     updateLiquidityActionButtonState();
                 }
-            } else if (!tokenBApproved) {
+            } else if (!hasTokenBAllowance) {
                 statusElement.textContent = 'Approving Token B...';
                 
                 await tokenBContract.methods.approve(TOKEN_SWAP_ADDRESS, amountBWei).send({ from: accounts[0] });
                 
-                tokenBApproved = true;
+                // Update allowance after approval
+                tokenBAllowance = await tokenBContract.methods.allowance(accounts[0], TOKEN_SWAP_ADDRESS).call();
                 statusElement.textContent = 'Token B approved! Click again to add liquidity.';
                 statusElement.classList.add('success');
                 updateLiquidityActionButtonState();
